@@ -15,9 +15,11 @@
     "lucide-react": "^0.506.0",
     "next": "15.3.1",
     "next-auth": "^4.24.11",
+    "passkit-generator": "^3.3.1",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.5",
