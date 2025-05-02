@@ -56,8 +56,7 @@ const Card = ({ cardData }: { cardData: any }) => {
         )}
       </div>
 
-      <button 
-      onClick={() => window.location.href = "/api/generate-pass"}
+      <button
       className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white py-2 px-4 rounded-xl font-semibold shadow-md hover:scale-105 transition-all duration-200 cursor-pointer">
         Add to Wallet
       </button>
