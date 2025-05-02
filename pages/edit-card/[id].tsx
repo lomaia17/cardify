@@ -83,7 +83,7 @@ const EditCard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
-      <Header />
+      <Header firstName=""/>
       <div className="min-h-screen flex items-start justify-center py-12 px-4">
         <div className="w-full max-w-2xl bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
