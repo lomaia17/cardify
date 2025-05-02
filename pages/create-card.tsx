@@ -1,4 +1,3 @@
-// Home.tsx
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router"; // Import Next.js router for redirection
@@ -80,7 +79,7 @@ const CreateCard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
         <div className="p-6">
-          <DashboardHeader />
+          <DashboardHeader firstName="" />
         </div>
       <div className="min-h-screen flex items-start justify-center py-12 px-4">
         <div className="flex flex-col md:flex-row items-start justify-center gap-10 w-full max-w-6xl">

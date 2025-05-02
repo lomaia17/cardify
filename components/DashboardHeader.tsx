@@ -20,7 +20,7 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
   return (
     <header className="flex justify-between items-center mb-8">
       <h1 className="text-3xl font-bold text-gray-800">
-        🎛️ {firstName ? `${firstName}'s Cards` : "Your Cards"}
+        🎛️ {firstName ? `${firstName}'s Cards` : "Create Card"}
       </h1>
       <nav className="flex items-center gap-4">
         <Link
