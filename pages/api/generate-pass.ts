@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { PKPass } from 'passkit-generator';
 import { db, doc, getDoc } from '../../utils/firebaseConfig'; // Import Firestore from your config file
+import { NextApiRequest, NextApiResponse } from 'next'; // Import Next.js types
 
-export default async function handler(req, res) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
 
   try {
     // Fetch card data from Firestore using cardId
-    const cardRef = doc(db, 'cards', cardId); // Access the card document in Firestore
+    const cardRef = doc(db, 'cards', cardId as string); // Type cardId as string
     const cardDoc = await getDoc(cardRef);
 
     if (!cardDoc.exists()) {
