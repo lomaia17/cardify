@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { PKPass } from 'passkit-generator';
 import { db, doc, getDoc } from '../../../utils/firebaseConfig';
+import { NextApiRequest, NextApiResponse } from 'next'; // Import Next.js types
 
-export default async function handler(req, res) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
