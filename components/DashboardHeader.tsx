@@ -75,12 +75,6 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
           <PlusIcon className="w-4 h-4" /> Create Card
         </Link>
         <button
-          onClick={handleCreateFromLinkedIn}
-          className="inline-flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition cursor-pointer"
-        >
-          <LinkedinIcon className="w-4 h-4" /> From LinkedIn
-        </button>
-        <button
           onClick={handleLogout}
           className="inline-flex items-center gap-1 bg-purple-500 text-white px-4 py-2 rounded-xl hover:bg-purple-600 transition cursor-pointer"
         >
