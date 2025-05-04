@@ -36,7 +36,12 @@ const EditCard = () => {
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    if (!id || !session?.user?.email) return;
+    if (!id || !session?.user?.email) {
+      if (status === "unauthenticated") {
+        router.push("/");
+      }
+      return;
+    }
 
     const fetchCard = async () => {
       try {
@@ -48,7 +53,7 @@ const EditCard = () => {
 
           if (
             !data?.email ||
-            data.email.toLowerCase() !== session.user.email.toLowerCase()
+            data.email.toLowerCase() !== session.user?.email?.toLowerCase()
           ) {
             alert("You are not authorized to edit this card.");
             router.push("/");
@@ -68,7 +73,7 @@ const EditCard = () => {
     };
 
     fetchCard();
-  }, [id, session?.user?.email]);
+  }, [id, session?.user?.email, status, router]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -90,6 +95,10 @@ const EditCard = () => {
 
   if (loading || status === "loading") {
     return <p className="text-center py-10">Loading card...</p>;
+  }
+
+  if (!session?.user?.email) {
+    return <p className="text-center py-10">Unauthorized access. Please sign in.</p>;
   }
 
   return (
