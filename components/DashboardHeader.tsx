@@ -1,18 +1,28 @@
 // components/DashboardHeader.tsx
 import Link from "next/link";
-import { PlusIcon, LogOutIcon , LinkedinIcon } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { PlusIcon, LogOutIcon, LinkedinIcon } from "lucide-react";
 import { useRouter } from "next/router";
-import { signOut , useSession  } from "next-auth/react"; 
+import { getAuth, signOut as firebaseSignOut } from "firebase/auth";
+import { signOut as nextAuthSignOut, useSession } from "next-auth/react"; // ✅ Add useSession
 
 export default function DashboardHeader({ firstName }: { firstName: string | null }) {
-  const { logout } = useAuth();
   const router = useRouter();
   const { data: session } = useSession();
+
   const handleLogout = async () => {
     try {
-      await signOut({ redirect: false }); // Ensure this is not redirecting automatically
-      router.push("/"); // After logging out, redirect to the home page
+      // ✅ Sign out from Firebase (if user is authenticated)
+      const firebaseAuth = getAuth();
+      if (firebaseAuth.currentUser) {
+        await firebaseSignOut(firebaseAuth);
+      }
+
+      // ✅ Sign out from NextAuth (if session exists)
+      if (session) {
+        await nextAuthSignOut({ redirect: false });
+      }
+
+      router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -32,10 +42,10 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
         firstName,
         lastName,
         email: profile.email,
-        title: "", // LinkedIn doesn't provide this by default via next-auth
+        title: "",
         company: "",
         phone: "",
-        linkedin: profile.image, // or a default LinkedIn URL
+        linkedin: profile.image,
       };
 
       const { db, collection, addDoc } = await import("../utils/firebaseConfig");
