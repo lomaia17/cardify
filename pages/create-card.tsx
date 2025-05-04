@@ -1,8 +1,7 @@
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router"; // Import Next.js router for redirection
-import { db, collection, addDoc } from  "../utils/firebaseConfig"; // Import Firebase database
-import { useAuth } from "../context/AuthContext";
+import { db, collection, addDoc } from "../utils/firebaseConfig"; // Import Firebase database
 import DashboardHeader from "../components/DashboardHeader";
 
 import {
@@ -25,14 +24,16 @@ interface UserInfo {
 }
 
 const CreateCard = () => {
+  const { data: session } = useSession(); // Access NextAuth session
+  const router = useRouter();
 
   // Redirect if not logged in
-  const { user } = useAuth();
   useEffect(() => {
-    if (!user) router.push("/"); 
-  }, [user]);
+    if (!session) {
+      router.push("/"); // Redirect to home if not logged in
+    }
+  }, [session, router]);
 
-  const { data: session } = useSession();
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: "",
     lastName: "",
@@ -42,9 +43,9 @@ const CreateCard = () => {
     phone: "",
     linkedin: "",
   });
-  const router = useRouter(); // Initialize router
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Handle form input changes
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setUserInfo({
       ...userInfo,
@@ -52,35 +53,43 @@ const CreateCard = () => {
     });
   };
 
+  // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    if (!user) return;
-  
+
+    if (!session?.user?.email) {
+      console.error("User not logged in via session");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
+      // Save data to Firestore
       const userRef = await addDoc(collection(db, "cards"), {
         firstName: userInfo.firstName,
         lastName: userInfo.lastName,
-        email: user.email, // use logged-in user's email
+        email: session.user.email, // Use session email
         title: userInfo.title,
         company: userInfo.company,
         phone: userInfo.phone,
-        linkedin: userInfo.linkedin,
+        linkedin: userInfo.linkedin || null,
       });
-  
+
+      // Redirect to the newly created card page
       router.push(`/card/${userRef.id}`);
     } catch (error) {
       console.error("Error saving user data: ", error);
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Always reset submitting state
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
-        <div className="p-6">
-          <DashboardHeader firstName="" />
-        </div>
+      <div className="p-6">
+        <DashboardHeader firstName="" />
+      </div>
       <div className="min-h-screen flex items-start justify-center py-12 px-4">
         <div className="flex flex-col md:flex-row items-start justify-center gap-10 w-full max-w-6xl">
           <form
@@ -91,7 +100,8 @@ const CreateCard = () => {
               ✨ Create Your Digital Business Card
             </h2>
 
-            {[ 
+            {/* Form Fields */}
+            {[
               { name: "firstName", placeholder: "First Name", icon: UserIcon },
               { name: "lastName", placeholder: "Last Name", icon: UserIcon },
               { name: "email", placeholder: "Email", icon: MailIcon },

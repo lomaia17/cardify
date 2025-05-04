@@ -1,9 +1,12 @@
-import { useEffect, useState, ChangeEvent, FormEvent } from "react";
+// pages/card/edit/[id].tsx
+
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseConfig";
+import { useSession } from "next-auth/react";
+
 import Header from "../../components/DashboardHeader";
-import { useAuth } from "../../context/AuthContext";
 
 import {
   UserIcon,
@@ -15,7 +18,7 @@ import {
 } from "lucide-react";
 
 const EditCard = () => {
-  const { user } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { id } = router.query;
 
@@ -33,33 +36,39 @@ const EditCard = () => {
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      const fetchCard = async () => {
-        try {
-          const docRef = doc(db, "cards", id as string);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.email !== user?.email) {
-              alert("You are not authorized to edit this card.");
-              router.push("/");
-              return;
-            }
-            setFormData(data as any);
-          } else {
-            alert("Card not found");
-            router.push("/");
-          }
-        } catch (error) {
-          console.error("Error fetching card:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+    if (!id || !session?.user?.email) return;
 
-      fetchCard();
-    }
-  }, [id, user]);
+    const fetchCard = async () => {
+      try {
+        const docRef = doc(db, "cards", id as string);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          if (
+            !data?.email ||
+            data.email.toLowerCase() !== session.user.email.toLowerCase()
+          ) {
+            alert("You are not authorized to edit this card.");
+            router.push("/");
+            return;
+          }
+
+          setFormData(data as any);
+        } else {
+          alert("Card not found.");
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error fetching card:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCard();
+  }, [id, session?.user?.email]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -79,11 +88,13 @@ const EditCard = () => {
     }
   };
 
-  if (loading) return <p className="text-center py-10">Loading card...</p>;
+  if (loading || status === "loading") {
+    return <p className="text-center py-10">Loading card...</p>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
-      <Header firstName=""/>
+      <Header firstName={formData.firstName || ""} />
       <div className="min-h-screen flex items-start justify-center py-12 px-4">
         <div className="w-full max-w-2xl bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
@@ -98,7 +109,11 @@ const EditCard = () => {
               { name: "title", placeholder: "Title", icon: BriefcaseIcon },
               { name: "company", placeholder: "Company", icon: Building2Icon },
               { name: "phone", placeholder: "Phone", icon: PhoneIcon },
-              { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon },
+              {
+                name: "linkedin",
+                placeholder: "LinkedIn URL",
+                icon: LinkedinIcon,
+              },
             ].map(({ name, placeholder, icon: Icon }) => (
               <div className="relative" key={name}>
                 <input

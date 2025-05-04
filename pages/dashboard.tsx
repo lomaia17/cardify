@@ -1,14 +1,15 @@
+// pages/dashboard.tsx
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { db, collection, getDocs, query, where, deleteDoc, doc } from "../utils/firebaseConfig";
 import Link from "next/link";
 import { TrashIcon } from "lucide-react";
-import { PencilIcon, EyeIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, EyeIcon } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { data: session } = useSession();
   const router = useRouter();
   const [cards, setCards] = useState<any[]>([]);
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -17,12 +18,12 @@ export default function Dashboard() {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!session) {
       router.push("/login"); // Redirect if not logged in
     } else {
       const fetchUserInfo = async () => {
         try {
-          const q = query(collection(db, "users"), where("email", "==", user.email));
+          const q = query(collection(db, "users"), where("email", "==", session.user?.email));
           const querySnapshot = await getDocs(q);
 
           if (!querySnapshot.empty) {
@@ -40,7 +41,7 @@ export default function Dashboard() {
 
       const fetchCards = async () => {
         try {
-          const q = query(collection(db, "cards"), where("email", "==", user.email));
+          const q = query(collection(db, "cards"), where("email", "==", session.user?.email));
           const querySnapshot = await getDocs(q);
 
           if (!querySnapshot.empty) {
@@ -62,7 +63,7 @@ export default function Dashboard() {
       fetchUserInfo();
       fetchCards();
     }
-  }, [user]);
+  }, [session]);
 
   // Open modal
   const openModal = (cardId: string) => {
@@ -94,7 +95,22 @@ export default function Dashboard() {
 
       {/* Card List */}
       {loading ? (
-        <p>Loading cards...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={index}
+              className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border border-white/30 shadow-lg animate-pulse"
+            >
+              <div className="h-6 bg-gray-300 rounded w-3/4 mb-4"></div>
+              <div className="h-4 bg-gray-300 rounded w-1/2 mb-6"></div>
+              <div className="flex justify-end gap-3 mt-4">
+                <div className="w-5 h-5 bg-gray-300 rounded"></div>
+                <div className="w-5 h-5 bg-gray-300 rounded"></div>
+                <div className="w-5 h-5 bg-gray-300 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : cards.length === 0 ? (
         <p className="text-gray-600">You have no cards yet. Click “Create Card” to start.</p>
       ) : (

@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider , setPersistence, browserLocalPersistence} from "firebase/auth";
-import { getFirestore, collection, addDoc  , getDocs, query, where , deleteDoc , doc} from "firebase/firestore";
+import { getFirestore, collection, addDoc  , getDocs, query, where , deleteDoc , doc, getDoc} from "firebase/firestore";
 
 // Firebase configuration from Firebase Console
 const firebaseConfig = {
@@ -18,4 +18,4 @@ const auth = getAuth();
 setPersistence(auth, browserLocalPersistence);
 const provider = new GoogleAuthProvider();
 
-export { db , collection, addDoc , auth, provider ,getDocs, query, where , deleteDoc , doc };
+export { db , collection, addDoc , auth, provider ,getDocs, query, where , deleteDoc , doc , getDoc};
