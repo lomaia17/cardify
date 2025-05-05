@@ -79,6 +79,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    pass.setBarcodes({
+      message: `https://yourdomain.com/card/${cardId}`,
+      format: "PKBarcodeFormatQR",
+      messageEncoding: "iso-8859-1",
+      altText: "Scan to view the business card"
+    });
+
     // === GENERATE PASS ===
     const pkpassBuffer = await pass.getAsBuffer();
 
