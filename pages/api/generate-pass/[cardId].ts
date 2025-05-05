@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         signerCert: fs.readFileSync(path.join(certsPath, 'passwallet.pem')),
         signerKey: fs.readFileSync(path.join(certsPath, 'pass-key.pem')),
         wwdr: fs.readFileSync(path.join(certsPath, 'wwdr.pem')),
-        signerKeyPassphrase: process.env.CERT_PASSWORD || 'your_certificate_password',
+        signerKeyPassphrase: process.env.CERT_PASSWORD || 'Ekakitia2002',
       },
     });
 
