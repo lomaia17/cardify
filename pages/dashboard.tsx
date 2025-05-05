@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useFirebaseAuth } from "../utils/useFirebaseAuth";
 import { useRouter } from "next/router";
+import { NextSeo } from "next-seo";
 import {
   db,
   collection,
@@ -17,6 +18,7 @@ import { TrashIcon, PencilIcon, EyeIcon } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
 
 export default function Dashboard() {
+  
   const { user, loading } = useFirebaseAuth();
   const router = useRouter();
 
@@ -104,6 +106,24 @@ export default function Dashboard() {
   }
 
   return (
+    <>
+    <NextSeo
+        title="Dashboard"
+        description="Create your personalized digital business card in seconds."
+        canonical="https://yourwebsite.com"
+        openGraph={{
+          url: 'https://yourwebsite.com',
+          title: 'Digital Business Card Generator',
+          description: 'Create your personalized digital business card in seconds.',
+          images: [
+            {
+              url: '../public/ogimage.png',
+              alt: 'OG Image',
+            },
+          ],
+          site_name: 'Cardify',
+        }}
+      />
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-6">
       <DashboardHeader firstName={firstName} />
 
@@ -125,15 +145,15 @@ export default function Dashboard() {
           ))}
         </div>
       ) : cards.length === 0 ? (
-        <p className="text-gray-600">
-          You have no cards yet. Click “Create Card” to start.
-        </p>
+        <p className="text-gray-600 text-center mt-12 text-lg">
+        🚫 No cards yet!<br />Click <span className="text-purple-600 font-semibold">“Create Card”</span> to get started.
+      </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => (
             <div
               key={card.id}
-              className="bg-white/40 p-6 rounded-2xl border border-white/30 shadow-lg hover:shadow-xl transition"
+              className="bg-white/40 p-6 rounded-2xl border border-white/30 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-xl cursor-pointer"
             >
               <h2 className="text-xl font-semibold text-gray-800 mb-2">
                 {card.firstName} {card.lastName}
@@ -188,5 +208,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    </>
   );
 }

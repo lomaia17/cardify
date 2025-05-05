@@ -4,7 +4,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../../utils/firebaseConfig"; // Assuming firebaseConfig exports auth as well
 import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentication imports
 import { ClipLoader } from 'react-spinners';
-
+import { NextSeo } from "next-seo";
 import Header from "../../components/DashboardHeader";
 
 import {
@@ -113,6 +113,24 @@ const EditCard = () => {
   }
 
   return (
+    <>
+    <NextSeo
+        title="Edit Card"
+        description="Create your personalized digital business card in seconds."
+        canonical="https://yourwebsite.com"
+        openGraph={{
+          url: 'https://yourwebsite.com',
+          title: 'Digital Business Card Generator',
+          description: 'Create your personalized digital business card in seconds.',
+          images: [
+            {
+              url: '../../public/ogimage.png',
+              alt: 'OG Image',
+            },
+          ],
+          site_name: 'Cardify',
+        }}
+      />
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
       <div className="p-6">
       <Header firstName={formData.firstName || ""} />
@@ -157,6 +175,7 @@ const EditCard = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

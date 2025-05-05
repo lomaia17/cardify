@@ -5,7 +5,7 @@ import DashboardHeader from "../components/DashboardHeader";
 import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon } from "lucide-react";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage imports
 import { ClipLoader } from 'react-spinners';
-
+import { NextSeo } from "next-seo";
 interface UserInfo {
   firstName: string;
   lastName: string;
@@ -149,6 +149,24 @@ const CreateCard = () => {
   );
 
   return (
+    <>
+    <NextSeo
+        title="Create Card"
+        description="Create your personalized digital business card in seconds."
+        canonical="https://yourwebsite.com"
+        openGraph={{
+          url: 'https://yourwebsite.com',
+          title: 'Digital Business Card Generator',
+          description: 'Create your personalized digital business card in seconds.',
+          images: [
+            {
+              url: '../public/ogimage.png',
+              alt: 'OG Image',
+            },
+          ],
+          site_name: 'Cardify',
+        }}
+      />
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
       <div className="p-6">
         <DashboardHeader firstName={userInfo.firstName} />
@@ -219,6 +237,7 @@ const CreateCard = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

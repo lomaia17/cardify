@@ -1,15 +1,27 @@
 import Link from "next/link";
-import Head from "next/head";
+import { NextSeo } from 'next-seo';
 import { SparklesIcon, DevicePhoneMobileIcon, RocketLaunchIcon, UserGroupIcon, BriefcaseIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 
 export default function Index() {
   return (
     <>
-      <Head>
-        <title>Digital Business Card Generator</title>
-        <meta name="description" content="Create your personalized digital business card in seconds." />
-      </Head>
-
+ <NextSeo
+        title="Digital Business Card Generator"
+        description="Create your personalized digital business card in seconds."
+        canonical="https://yourwebsite.com"
+        openGraph={{
+          url: 'https://yourwebsite.com',
+          title: 'Digital Business Card Generator',
+          description: 'Create your personalized digital business card in seconds.',
+          images: [
+            {
+              url: '../public/ogimage.png',
+              alt: 'OG Image',
+            },
+          ],
+          site_name: 'Cardify',
+        }}
+      />
       <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-100 text-gray-800">
         {/* Header */}
         <header className="py-6 px-8 flex justify-between items-center">

@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { auth, db } from "../utils/firebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-
+import { NextSeo } from "next-seo";
 export default function Register() {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -46,6 +46,24 @@ export default function Register() {
 
 
   return (
+    <>
+    <NextSeo
+            title="Register"
+            description="Create your personalized digital business card in seconds."
+            canonical="https://yourwebsite.com"
+            openGraph={{
+              url: 'https://yourwebsite.com',
+              title: 'Digital Business Card Generator',
+              description: 'Create your personalized digital business card in seconds.',
+              images: [
+                {
+                  url: '../public/ogimage.png',
+                  alt: 'OG Image',
+                },
+              ],
+              site_name: 'Cardify',
+            }}
+          />
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl space-y-6">
         <h2 className="text-3xl font-bold text-center text-gray-800">📝 Register</h2>
@@ -110,5 +128,6 @@ export default function Register() {
         </p>
       </div>
     </div>
+    </>
   );
 }
