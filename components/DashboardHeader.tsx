@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PlusIcon, LogOutIcon } from "lucide-react";
+import { PlusIcon, LogOutIcon , User    } from "lucide-react";
 import { useRouter } from "next/router";
 import { getAuth, signOut as firebaseSignOut } from "firebase/auth";
 import { signOut as nextAuthSignOut, useSession } from "next-auth/react"; // ✅ Add useSession
@@ -31,7 +31,7 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
     <header className="flex flex-col sm:flex-row justify-between items-center mb-8 py-4">
       <Link href="/dashboard" className="mb-4 sm:mb-0">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center sm:text-left">
-          🎛️ {firstName ? `${firstName}'s Cards` : "Create Card"}
+        <div className="flex items-center gap-2"><User  className="w-6 h-6 text-purple-500" />  {firstName ? `${firstName}'s Cards` : "Create Card"}</div>
         </h1>
       </Link>
 
