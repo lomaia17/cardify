@@ -153,7 +153,7 @@ const CreateCard = () => {
       <div className="p-6">
         <DashboardHeader firstName={userInfo.firstName} />
       </div>
-      <div className="min-h-screen flex items-start justify-center py-12 px-4">
+      <div className="min-h-screen flex items-start justify-center px-4">
         <div className="flex flex-col md:flex-row items-start justify-center gap-10 w-full max-w-6xl">
           <form
             onSubmit={handleSubmit}
