@@ -1,7 +1,6 @@
-import { useState, ChangeEvent, FormEvent, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/router"; // Import Next.js router for redirection
-import { db, collection, addDoc } from "../utils/firebaseConfig"; // Import Firebase database
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { useRouter } from "next/router";
+import { db, collection, addDoc, getAuth, onAuthStateChanged, User, doc , getDoc  } from "../utils/firebaseConfig";
 import DashboardHeader from "../components/DashboardHeader";
 
 import {
@@ -24,15 +23,9 @@ interface UserInfo {
 }
 
 const CreateCard = () => {
-  const { data: session } = useSession(); // Access NextAuth session
   const router = useRouter();
-
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!session) {
-      router.push("/"); // Redirect to home if not logged in
-    }
-  }, [session, router]);
+  const [user, setUser] = useState<any>(null); // Firebase user
+  const [loading, setLoading] = useState(true);
 
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: "",
@@ -43,52 +36,86 @@ const CreateCard = () => {
     phone: "",
     linkedin: "",
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle form input changes
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setUserInfo({
-      ...userInfo,
-      [e.target.name]: e.target.value,
+  // Check Firebase auth state
+  useEffect(() => {
+    const auth = getAuth();
+  
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+  
+        try {
+          const userDocRef = doc(db, "users", firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+  
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            setUserInfo((prev) => ({
+              ...prev,
+              firstName: data.firstName || "",
+              lastName: data.lastName || "",
+              phone: data.phone || "",
+              email: data.email || firebaseUser.email || "",
+            }));
+          } else {
+            // fallback to just auth email if Firestore doc doesn't exist
+            setUserInfo((prev) => ({
+              ...prev,
+              email: firebaseUser.email || "",
+            }));
+          }
+        } catch (err) {
+          console.error("Error fetching user document: ", err);
+        }
+      } else {
+        router.push("/"); // Not logged in
+      }
+  
+      setLoading(false);
     });
+  
+    return () => unsubscribe(); // Clean up
+  }, [router]);
+
+  // Input change
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
   };
 
-  // Handle form submission
+  // Form submit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!session?.user?.email) {
-      console.error("User not logged in via session");
+    if (!user?.email) {
+      console.error("User not authenticated");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      // Save data to Firestore
-      const userRef = await addDoc(collection(db, "cards"), {
-        firstName: userInfo.firstName,
-        lastName: userInfo.lastName,
-        email: session.user.email, // Use session email
-        title: userInfo.title,
-        company: userInfo.company,
-        phone: userInfo.phone,
-        linkedin: userInfo.linkedin || null,
+      const docRef = await addDoc(collection(db, "cards"), {
+        ...userInfo,
+        email: user.email,
       });
 
-      // Redirect to the newly created card page
-      router.push(`/card/${userRef.id}`);
+      router.push(`/card/${docRef.id}`);
     } catch (error) {
       console.error("Error saving user data: ", error);
     } finally {
-      setIsSubmitting(false); // Always reset submitting state
+      setIsSubmitting(false);
     }
   };
+
+  if (loading) return <div className="text-center mt-10">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
       <div className="p-6">
-        <DashboardHeader firstName="" />
+        <DashboardHeader firstName={userInfo.firstName} />
       </div>
       <div className="min-h-screen flex items-start justify-center py-12 px-4">
         <div className="flex flex-col md:flex-row items-start justify-center gap-10 w-full max-w-6xl">
@@ -100,8 +127,7 @@ const CreateCard = () => {
               ✨ Create Your Digital Business Card
             </h2>
 
-            {/* Form Fields */}
-            {[
+            {[ 
               { name: "firstName", placeholder: "First Name", icon: UserIcon },
               { name: "lastName", placeholder: "Last Name", icon: UserIcon },
               { name: "email", placeholder: "Email", icon: MailIcon },
@@ -126,7 +152,7 @@ const CreateCard = () => {
             <button
               type="submit"
               className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
-              disabled={isSubmitting} // Disable the button while submitting
+              disabled={isSubmitting}
             >
               {isSubmitting ? "🚀 Generating Card..." : "🚀 Generate Card"}
             </button>

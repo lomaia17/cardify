@@ -28,33 +28,6 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
     }
   };
 
-  const handleCreateFromLinkedIn = async () => {
-    try {
-      const profile = session?.user;
-      if (!profile || !profile.name || !profile.email) {
-        alert("LinkedIn data not available.");
-        return;
-      }
-
-      const [firstName, ...lastNameParts] = profile.name.split(" ");
-      const lastName = lastNameParts.join(" ");
-      const newCard = {
-        firstName,
-        lastName,
-        email: profile.email,
-        title: "",
-        company: "",
-        phone: "",
-        linkedin: profile.image,
-      };
-
-      const { db, collection, addDoc } = await import("../utils/firebaseConfig");
-      const cardRef = await addDoc(collection(db, "cards"), newCard);
-      router.push(`/card/${cardRef.id}`);
-    } catch (error) {
-      console.error("Error creating card from LinkedIn:", error);
-    }
-  };
 
   return (
     <header className="flex justify-between items-center mb-8">

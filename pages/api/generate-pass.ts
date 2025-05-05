@@ -99,6 +99,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     );
 
+    if (cardData.linkedin) {
+      pass.auxiliaryFields.push({
+        key: 'linkedin',
+        label: 'LinkedIn',
+        value: cardData.linkedin,
+      });
+    }
+
+    pass.setBarcodes({
+      message: `https://yourdomain.com/card/${cardId}`,
+      format: "PKBarcodeFormatQR",
+      messageEncoding: "iso-8859-1",
+      altText: "Scan to view the business card"
+    });
     // Generate .pkpass buffer
     const pkpassBuffer = await pass.getAsBuffer();
 
