@@ -1,10 +1,9 @@
-// pages/card/edit/[id].tsx
-
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../utils/firebaseConfig";
-import { useSession } from "next-auth/react";
+import { db, auth } from "../../utils/firebaseConfig"; // Assuming firebaseConfig exports auth as well
+import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentication imports
+import { ClipLoader } from 'react-spinners';
 
 import Header from "../../components/DashboardHeader";
 
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 
 const EditCard = () => {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const { id } = router.query;
 
@@ -34,36 +32,47 @@ const EditCard = () => {
 
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [user, setUser] = useState<User | null>(null); // Firebase user state
 
   useEffect(() => {
-    if (!id || !session?.user?.email) {
-      if (status === "unauthenticated") {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        // Redirect to home if user is not authenticated
         router.push("/");
+      } else {
+        setUser(firebaseUser);
       }
-      return;
-    }
+    });
 
+    return () => unsubscribe(); // Cleanup on component unmount
+  }, [router]);
+
+  useEffect(() => {
+    if (!id || !user?.email) return; // Ensure user is not null and email exists
+  
     const fetchCard = async () => {
       try {
         const docRef = doc(db, "cards", id as string);
         const docSnap = await getDoc(docRef);
-
+  
         if (docSnap.exists()) {
           const data = docSnap.data();
-
-          if (
-            !data?.email ||
-            data.email.toLowerCase() !== session.user?.email?.toLowerCase()
-          ) {
+  
+          // Normalize both emails to lowercase and trim any extra spaces
+          const cardEmail = data?.email?.toLowerCase().trim();
+          const loggedInEmail = user?.email?.toLowerCase().trim();
+  
+          // Check if the card email matches the logged-in user's email
+          if (cardEmail !== loggedInEmail) {
             alert("You are not authorized to edit this card.");
-            router.push("/");
+            router.push("/"); // Redirect to home if not authorized
             return;
           }
-
+  
           setFormData(data as any);
         } else {
           alert("Card not found.");
-          router.push("/");
+          router.push("/"); // Redirect if card not found
         }
       } catch (error) {
         console.error("Error fetching card:", error);
@@ -71,9 +80,9 @@ const EditCard = () => {
         setLoading(false);
       }
     };
-
+  
     fetchCard();
-  }, [id, session?.user?.email, status, router]);
+  }, [id, user?.email, router]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -93,36 +102,36 @@ const EditCard = () => {
     }
   };
 
-  if (loading || status === "loading") {
-    return <p className="text-center py-10">Loading card...</p>;
-  }
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <ClipLoader size={50} color="#4f46e5" />
+    </div>
+  );
 
-  if (!session?.user?.email) {
+  if (!user?.email) {
     return <p className="text-center py-10">Unauthorized access. Please sign in.</p>;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
+      <div className="p-6">
       <Header firstName={formData.firstName || ""} />
+      </div>
       <div className="min-h-screen flex items-start justify-center py-12 px-4">
         <div className="w-full max-w-2xl bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
+        
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
             🛠️ Edit Your Business Card
           </h2>
-
           <form onSubmit={handleSubmit} className="space-y-6">
-            {[
+            {[ 
               { name: "firstName", placeholder: "First Name", icon: UserIcon },
               { name: "lastName", placeholder: "Last Name", icon: UserIcon },
               { name: "email", placeholder: "Email", icon: MailIcon },
               { name: "title", placeholder: "Title", icon: BriefcaseIcon },
               { name: "company", placeholder: "Company", icon: Building2Icon },
               { name: "phone", placeholder: "Phone", icon: PhoneIcon },
-              {
-                name: "linkedin",
-                placeholder: "LinkedIn URL",
-                icon: LinkedinIcon,
-              },
+              { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon }
             ].map(({ name, placeholder, icon: Icon }) => (
               <div className="relative" key={name}>
                 <input

@@ -1,16 +1,10 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
-import { db, collection, addDoc, getAuth, onAuthStateChanged, User, doc , getDoc  } from "../utils/firebaseConfig";
+import { db, collection, addDoc, getAuth, onAuthStateChanged, User, doc, getDoc } from "../utils/firebaseConfig";
 import DashboardHeader from "../components/DashboardHeader";
-
-import {
-  UserIcon,
-  MailIcon,
-  PhoneIcon,
-  BriefcaseIcon,
-  Building2Icon,
-  LinkedinIcon,
-} from "lucide-react";
+import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon } from "lucide-react";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage imports
+import { ClipLoader } from 'react-spinners';
 
 interface UserInfo {
   firstName: string;
@@ -20,13 +14,13 @@ interface UserInfo {
   company: string;
   phone: string;
   linkedin?: string;
+  profileImage?: string; // Add profileImage field
 }
 
 const CreateCard = () => {
   const router = useRouter();
   const [user, setUser] = useState<any>(null); // Firebase user
   const [loading, setLoading] = useState(true);
-
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: "",
     lastName: "",
@@ -35,22 +29,25 @@ const CreateCard = () => {
     company: "",
     phone: "",
     linkedin: "",
+    profileImage: "", // Initially set as empty string
   });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null); // State to store image preview
+
+  const storage = getStorage(); // Firebase Storage reference
 
   // Check Firebase auth state
   useEffect(() => {
     const auth = getAuth();
-  
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-  
+
         try {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDocSnap = await getDoc(userDocRef);
-  
+
           if (userDocSnap.exists()) {
             const data = userDocSnap.data();
             setUserInfo((prev) => ({
@@ -61,7 +58,7 @@ const CreateCard = () => {
               email: data.email || firebaseUser.email || "",
             }));
           } else {
-            // fallback to just auth email if Firestore doc doesn't exist
+            // Fallback to just auth email if Firestore doc doesn't exist
             setUserInfo((prev) => ({
               ...prev,
               email: firebaseUser.email || "",
@@ -73,19 +70,54 @@ const CreateCard = () => {
       } else {
         router.push("/"); // Not logged in
       }
-  
+
       setLoading(false);
     });
-  
+
     return () => unsubscribe(); // Clean up
   }, [router]);
 
-  // Input change
+  // Input change handler
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
   };
 
-  // Form submit
+  // Handle image upload and preview
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Set image preview
+    const imageUrl = URL.createObjectURL(file);
+    setImagePreview(imageUrl);
+
+    const storageRef = ref(storage, `profileImages/${user?.uid}/${file.name}`);
+
+    try {
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log(`Upload is ${progress}% done`);
+        },
+        (error) => {
+          console.error("Error uploading image", error);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setUserInfo((prev) => ({
+            ...prev,
+            profileImage: downloadURL, // Store the URL of the uploaded image
+          }));
+        }
+      );
+    } catch (error) {
+      console.error("Error uploading file: ", error);
+    }
+  };
+
+  // Handle form submit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -110,7 +142,11 @@ const CreateCard = () => {
     }
   };
 
-  if (loading) return <div className="text-center mt-10">Loading...</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen">
+      <ClipLoader size={50} color="#4f46e5" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
@@ -148,6 +184,29 @@ const CreateCard = () => {
                 <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               </div>
             ))}
+
+            {/* Image Upload with Preview */}
+            <div className="relative">
+              <label htmlFor="file-upload" className="cursor-pointer text-gray-600 font-semibold block text-sm mb-2">
+                {imagePreview ? (
+                  <div className="w-full h-32 bg-gray-200 rounded-xl overflow-hidden">
+                    <img src={imagePreview} alt="Profile preview" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
+                    <span className="text-gray-500">Upload Profile Image</span>
+                  </div>
+                )}
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                name="profileImage"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
 
             <button
               type="submit"

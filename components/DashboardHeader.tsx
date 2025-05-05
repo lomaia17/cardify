@@ -1,6 +1,5 @@
-// components/DashboardHeader.tsx
 import Link from "next/link";
-import { PlusIcon, LogOutIcon, LinkedinIcon } from "lucide-react";
+import { PlusIcon, LogOutIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { getAuth, signOut as firebaseSignOut } from "firebase/auth";
 import { signOut as nextAuthSignOut, useSession } from "next-auth/react"; // ✅ Add useSession
@@ -28,19 +27,15 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
     }
   };
 
-
   return (
-    <header className="flex justify-between items-center mb-8">
-      <h1 className="text-3xl font-bold text-gray-800">
-        🎛️ {firstName ? `${firstName}'s Cards` : "Create Card"}
-      </h1>
-      <nav className="flex items-center gap-4">
-        <Link
-          href="/dashboard"
-          className="text-purple-600 hover:underline font-medium"
-        >
-          Dashboard
-        </Link>
+    <header className="flex flex-col sm:flex-row justify-between items-center mb-8 py-4">
+      <Link href="/dashboard" className="mb-4 sm:mb-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center sm:text-left">
+          🎛️ {firstName ? `${firstName}'s Cards` : "Create Card"}
+        </h1>
+      </Link>
+
+      <nav className="flex items-center gap-4 mt-4 sm:mt-0">
         <Link
           href="/create-card"
           className="inline-flex items-center gap-1 bg-purple-500 text-white px-4 py-2 rounded-xl hover:bg-purple-600 transition"
