@@ -6,7 +6,7 @@ import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentica
 import { ClipLoader } from 'react-spinners';
 import { NextSeo } from "next-seo";
 import Header from "../../components/DashboardHeader";
-import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon } from "lucide-react";
+import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon, Link } from "lucide-react";
 
 // Define FormData interface with all fields
 interface FormData {
@@ -17,6 +17,7 @@ interface FormData {
   company: string;
   phone: string;
   linkedin: string;
+  slug: string;
 }
 
 const EditCard = () => {
@@ -31,6 +32,7 @@ const EditCard = () => {
     company: "",
     phone: "",
     linkedin: "",
+    slug: "",
   });
 
   const [loading, setLoading] = useState(true);
@@ -102,18 +104,30 @@ const EditCard = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setUpdating(true);
+  
     try {
-      const q = query(collection(db, "cards"), where("slug", "==", id));
+      // Check if the slug already exists in the 'cards' collection
+      const q = query(collection(db, "cards"), where("slug", "==", formData.slug));
       const querySnapshot = await getDocs(q);
+  
       if (!querySnapshot.empty) {
-        const docRef = doc(db, "cards", querySnapshot.docs[0].id); // Get document reference using slug
-
-        // Ensure that formData is cast to the appropriate type
-        await updateDoc(docRef, { ...formData }); // Spread formData into an object
-        router.push(`/card/${id}`);
+        // If the slug already exists, show an error or handle as needed
+        alert("This slug is already taken. Please choose a different one.");
+        setUpdating(false);
+        return;
+      }
+  
+      // Proceed with updating the card
+      const cardQuery = query(collection(db, "cards"), where("slug", "==", id));
+      const cardSnapshot = await getDocs(cardQuery);
+  
+      if (!cardSnapshot.empty) {
+        const docRef = doc(db, "cards", cardSnapshot.docs[0].id); // Get the document reference
+        await updateDoc(docRef, { ...formData }); // Update the card with the new slug and data
+        router.push(`/card/${formData.slug}`); // Redirect to the new slug URL
       } else {
         alert("Card not found.");
-        router.push("/"); // Redirect if card not found
+        router.push("/");
       }
     } catch (error) {
       console.error("Error updating card:", error);
@@ -121,6 +135,7 @@ const EditCard = () => {
       setUpdating(false);
     }
   };
+  
 
   if (loading || !id) {
     return (
@@ -171,7 +186,8 @@ const EditCard = () => {
               { name: "title", placeholder: "Title", icon: BriefcaseIcon },
               { name: "company", placeholder: "Company", icon: Building2Icon },
               { name: "phone", placeholder: "Phone", icon: PhoneIcon },
-              { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon }
+              { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon },
+              { name: "slug", placeholder: "Change Slug", icon: Link },
             ].map(({ name, placeholder, icon: Icon }) => (
               <div className="relative" key={name}>
                 <input
