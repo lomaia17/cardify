@@ -187,7 +187,6 @@ const EditCard = () => {
               { name: "company", placeholder: "Company", icon: Building2Icon },
               { name: "phone", placeholder: "Phone", icon: PhoneIcon },
               { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon },
-              { name: "slug", placeholder: "Change Slug", icon: Link },
             ].map(({ name, placeholder, icon: Icon }) => (
               <div className="relative" key={name}>
                 <input
@@ -201,7 +200,35 @@ const EditCard = () => {
                 <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               </div>
             ))}
+            {[
+              {
+                name: "slug",
+                placeholder: "Change Slug",
+                icon: Link,
+              },
+            ].map(({ name, placeholder, icon: Icon }) => (
+                            <div className="relative">
+                <div className="flex items-center rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus-within:ring-2 focus-within:ring-purple-400 overflow-hidden">
+                  {/* Icon on the left */}
+                  <Link className="ml-4 text-gray-400 w-5 h-5" />
 
+                  {/* Static slug prefix */}
+                  <span className="px-2 pr-0 text-gray-500 text-sm whitespace-nowrap">
+                    {typeof window !== "undefined" ? `${window.location.origin}/card/` : ""}
+                  </span>
+
+                  {/* Input field */}
+                  <input
+                    type="text"
+                    name="slug"
+                    placeholder="your-slug"
+                    value={formData.slug}
+                    onChange={handleChange}
+                    className="flex-1 px-2 pl-1 py-3 bg-transparent focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
             <button
               type="submit"
               className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
