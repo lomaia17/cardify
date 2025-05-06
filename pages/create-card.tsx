@@ -10,7 +10,7 @@ import {
   doc,
   getDoc,
 } from "../utils/firebaseConfig";
-import DashboardHeader from "../components/DashboardHeader";
+import DashboardHeader from "../components/cardsHeader";
 import {
   UserIcon,
   MailIcon,

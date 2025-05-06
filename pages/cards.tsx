@@ -1,4 +1,4 @@
-// pages/dashboard.tsx
+// pages/cards.tsx
 
 import { useEffect, useState } from "react";
 import { useFirebaseAuth } from "../utils/useFirebaseAuth";

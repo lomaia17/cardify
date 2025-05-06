@@ -5,7 +5,7 @@ import { db, auth } from "../../utils/firebaseConfig"; // Firebase configuration
 import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentication imports
 import { ClipLoader } from 'react-spinners';
 import { NextSeo } from "next-seo";
-import Header from "../../components/DashboardHeader";
+import Header from "../../components/cardsHeader";
 import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon, Link } from "lucide-react";
 
 // Define FormData interface with all fields

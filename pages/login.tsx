@@ -15,7 +15,7 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && user && router.pathname === "/login") {
-      router.push("/dashboard");
+      router.push("/cards");
     }
   }, [loading, user, router]);
 

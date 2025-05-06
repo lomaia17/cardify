@@ -29,7 +29,7 @@ export default function DashboardHeader({ firstName }: { firstName: string | nul
 
   return (
     <header className="flex flex-col sm:flex-row justify-between items-center mb-8 py-4">
-      <Link href="/dashboard" className="mb-4 sm:mb-0">
+      <Link href="/cards" className="mb-4 sm:mb-0">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center sm:text-left">
         <div className="flex items-center gap-2"><User  className="w-6 h-6 text-purple-500" />  {firstName ? `${firstName}'s Cards` : "Create Card"}</div>
         </h1>
