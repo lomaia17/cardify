@@ -1,17 +1,19 @@
 // utils/fetchCardData.ts
 import { db } from "./firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
+import { query, collection, where, getDocs } from "firebase/firestore";
 
 export const fetchCardData = async (slug: string) => {
+  console.log("Fetching card data for slug:", slug);  // Debugging log
   try {
-    const docRef = doc(db, "cards", slug); // Fetch the document with the given slug from the "cards" collection
-    const docSnap = await getDoc(docRef);
+    const q = query(collection(db, "cards"), where("slug", "==", slug));
+    const querySnapshot = await getDocs(q);
 
-    if (docSnap.exists()) {
-      return docSnap.data();
+    if (!querySnapshot.empty) {
+      const cardData = querySnapshot.docs[0].data();
+      return cardData;
     } else {
       console.error("No such document!");
-      return null; // Handle if the card doesn't exist
+      return null;
     }
   } catch (error) {
     console.error("Error fetching card data:", error);

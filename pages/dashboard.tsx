@@ -162,20 +162,28 @@ export default function Dashboard() {
                 {card.title} at {card.company}
               </p>
               <div className="flex justify-end gap-3 mt-4">
-                <Link href={`/card/${card.id}`} title="View Card">
-                  <EyeIcon className="w-5 h-5 text-blue-600 hover:text-blue-800" />
-                </Link>
-                <Link href={`/edit-card/${card.id}`} title="Edit Card">
-                  <PencilIcon className="w-5 h-5 text-yellow-600 hover:text-yellow-800" />
-                </Link>
-                <button
-                  onClick={() => openModal(card.id)}
-                  title="Delete Card"
-                  className="cursor-pointer"
-                >
-                  <TrashIcon className="w-5 h-5 text-red-600 hover:text-red-800" />
-                </button>
-              </div>
+  <button
+    onClick={() => router.push(`/card/${card.slug}`)}
+    title="View Card"
+    className="cursor-pointer"
+  >
+    <EyeIcon className="w-5 h-5 text-blue-600 hover:text-blue-800" />
+  </button>
+  <button
+    onClick={() => router.push(`/edit-card/${card.id}`)}
+    title="Edit Card"
+    className="cursor-pointer"
+  >
+    <PencilIcon className="w-5 h-5 text-yellow-600 hover:text-yellow-800" />
+  </button>
+  <button
+    onClick={() => openModal(card.id)}
+    title="Delete Card"
+    className="cursor-pointer"
+  >
+    <TrashIcon className="w-5 h-5 text-red-600 hover:text-red-800" />
+  </button>
+</div>
             </div>
           ))}
         </div>

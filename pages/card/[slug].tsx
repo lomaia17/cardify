@@ -6,21 +6,37 @@ import { fetchCardData } from "../../utils/fetchCardData";
 
 const CardPage = () => {
   const router = useRouter();
-  const { slug } = router.query;
+  const { slug } = router.query; // Getting 'slug' from the URL
 
   const [cardData, setCardData] = useState<any | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Ensure that slug exists before making the fetch call
     if (slug) {
       const getData = async () => {
-        const data = await fetchCardData(slug as string);
-        setCardData(data);
+        setLoading(true);
+        setError(null); // Reset error if slug changes
+        try {
+          const data = await fetchCardData(slug as string);
+          if (data) {
+            setCardData(data);
+          } else {
+            setError("Card not found");
+          }
+        } catch (err) {
+          setError("Error fetching card data");
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
       };
       getData();
     }
-  }, [slug]);
+  }, [slug]); // Trigger fetch when slug changes
 
-  if (!cardData) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-tr from-indigo-100 to-white flex items-center justify-center">
         <div className="text-center bg-white/80 px-6 py-4 rounded-xl shadow-lg backdrop-blur-sm text-gray-700 text-lg font-medium">
@@ -30,6 +46,27 @@ const CardPage = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-tr from-indigo-100 to-white flex items-center justify-center">
+        <div className="text-center bg-white/80 px-6 py-4 rounded-xl shadow-lg backdrop-blur-sm text-gray-700 text-lg font-medium">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!cardData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-tr from-indigo-100 to-white flex items-center justify-center">
+        <div className="text-center bg-white/80 px-6 py-4 rounded-xl shadow-lg backdrop-blur-sm text-gray-700 text-lg font-medium">
+          No card data found
+        </div>
+      </div>
+    );
+  }
+
+  // Combine first name and last name to create a full name
   const fullName = `${cardData.firstName} ${cardData.lastName}`;
   const finalCardData = {
     ...cardData,

@@ -1,40 +1,86 @@
-import { useParams } from "react-router-dom";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { db } from "../utils/firebaseConfig"; // adjust path as needed
+import { collection, query, where, getDocs } from "firebase/firestore";
 import {
-  UserIcon,
   EnvelopeIcon,
   BriefcaseIcon,
   BuildingOfficeIcon,
   PhoneIcon,
+  LinkIcon,
+  WalletIcon,
 } from "@heroicons/react/24/outline";
 
-const Card = ({ cardData }: { cardData: any }) => {
+// Define the type for card data
+interface CardData {
+  fullName?: string;
+  name?: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  linkedin?: string;
+  slug?: string;
+}
 
-  if (!cardData) return null;
+// Define CardProps interface
+interface CardProps {
+  cardData?: CardData | null; // Make cardData optional for parent to pass down
+}
 
-  const getCardIdFromUrl = () => {
-    const url = window.location.href; // Get the current URL
-    const regex = /\/card\/([^\/]+)/; // Match the pattern "/card/{cardId}"
-    const match = url.match(regex); // Try to find the cardId in the URL
-    
-    if (match && match[1]) {
-      return match[1]; // Return the cardId
-    }
-  
-    return null; // If cardId is not found, return null
-  };
-  
-  const cardId = getCardIdFromUrl();
+const Card = ({ cardData }: CardProps) => {
+  const router = useRouter();
+  const { slug } = router.query; // Get the slug from the URL
+
+  // If no cardData is passed as prop, fetch the data using the slug in the URL
+  if (!cardData && slug) {
+    const [fetchedCardData, setFetchedCardData] = useState<CardData | null>(
+      null
+    );
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      const fetchCardData = async () => {
+        if (!slug) {
+          setError("No slug found in the URL.");
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const q = query(collection(db, "cards"), where("slug", "==", slug)); // Query by slug
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            setFetchedCardData(querySnapshot.docs[0].data() as CardData);
+          } else {
+            setError("No card found with that slug.");
+          }
+        } catch (err) {
+          setError("Error fetching card data.");
+          console.error("Error fetching card data:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchCardData();
+    }, [slug]); // Re-run effect if slug changes
+
+    // Loading and error handling for fetching data
+    if (loading) return <div className="text-center mt-10">Loading...</div>;
+    if (error)
+      return <div className="text-center mt-10 text-red-500">{error}</div>;
+
+    // Use fetched data if cardData is not passed in
+    cardData = fetchedCardData;
+  }
 
   const handleAddToWallet = async () => {
-    if (!cardId) {
-      console.error("No cardId found");
-      return;
-    }
-
     try {
-      const response = await fetch(`/api/generate-pass/${cardId}`, {
-        method: "POST", // Ensure you're using the correct HTTP method
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(`/api/generate-pass/${slug}`, {
+        method: "POST",
       });
 
       if (!response.ok) {
@@ -44,14 +90,19 @@ const Card = ({ cardData }: { cardData: any }) => {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
-      a.download = "businessCard.pkpass"; // Optional: specify filename
+      a.download = "businessCard.pkpass";
+      document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading pass:", error);
     }
   };
+
+  // If no cardData is available, return null
+  if (!cardData) return null;
 
   return (
     <div className="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl p-8 w-full space-y-6 transition duration-300 hover:shadow-blue-200">
@@ -60,9 +111,11 @@ const Card = ({ cardData }: { cardData: any }) => {
           {cardData.fullName ? cardData.fullName[0] : "?"}
         </div>
         <h2 className="mt-4 text-2xl font-bold text-gray-800">
-          {cardData.fullName || cardData.name}
+          {cardData.fullName || cardData.name || "No Name Available"}
         </h2>
-        <p className="text-sm text-gray-500">{cardData.title}</p>
+        <p className="text-sm text-gray-500">
+          {cardData.title || "No Title Available"}
+        </p>
       </div>
 
       <div className="space-y-4 text-sm">
@@ -93,18 +146,20 @@ const Card = ({ cardData }: { cardData: any }) => {
             href={cardData.linkedin}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center text-indigo-600 hover:underline"
+            className="flex items-center text-indigo-600 hover:text-indigo-800 transition duration-300 ease-in-out transform hover:scale-101"
           >
-            View LinkedIn Profile
+            <LinkIcon className="w-5 h-5 mr-2" />
+            <span>View LinkedIn Profile</span>
           </a>
         )}
       </div>
 
       <button
         onClick={handleAddToWallet}
-        className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white py-2 px-4 rounded-xl font-semibold shadow-md hover:scale-105 transition-all duration-200 cursor-pointer"
+        className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white py-2 px-4 rounded-xl font-semibold shadow-md hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
       >
-        Add to Wallet
+        <WalletIcon className="w-5 h-5" />
+        <span>Add to Wallet</span>
       </button>
     </div>
   );

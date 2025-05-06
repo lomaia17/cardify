@@ -1,11 +1,37 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
-import { db, collection, addDoc, getAuth, onAuthStateChanged, User, doc, getDoc } from "../utils/firebaseConfig";
+import {
+  db,
+  collection,
+  addDoc,
+  getAuth,
+  onAuthStateChanged,
+  User,
+  doc,
+  getDoc,
+} from "../utils/firebaseConfig";
 import DashboardHeader from "../components/DashboardHeader";
-import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon } from "lucide-react";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage imports
-import { ClipLoader } from 'react-spinners';
+import {
+  UserIcon,
+  MailIcon,
+  PhoneIcon,
+  BriefcaseIcon,
+  Building2Icon,
+  LinkedinIcon,
+} from "lucide-react";
+import { EnvelopeIcon, BuildingOfficeIcon } from "@heroicons/react/24/outline";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { ClipLoader } from "react-spinners";
 import { NextSeo } from "next-seo";
+import slugify from "slugify";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 interface UserInfo {
   firstName: string;
   lastName: string;
@@ -14,12 +40,12 @@ interface UserInfo {
   company: string;
   phone: string;
   linkedin?: string;
-  profileImage?: string; // Add profileImage field
+  profileImage?: string;
 }
 
 const CreateCard = () => {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null); // Firebase user
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: "",
@@ -29,87 +55,85 @@ const CreateCard = () => {
     company: "",
     phone: "",
     linkedin: "",
-    profileImage: "", // Initially set as empty string
+    profileImage: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null); // State to store image preview
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const storage = getStorage(); // Firebase Storage reference
+  const storage = getStorage();
 
-  // Check Firebase auth state
   useEffect(() => {
     const auth = getAuth();
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (firebaseUser: User | null) => {
+        if (firebaseUser) {
+          setUser(firebaseUser);
+          try {
+            const userDocRef = doc(db, "users", firebaseUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
 
-        try {
-          const userDocRef = doc(db, "users", firebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (userDocSnap.exists()) {
-            const data = userDocSnap.data();
-            setUserInfo((prev) => ({
-              ...prev,
-              firstName: data.firstName || "",
-              lastName: data.lastName || "",
-              phone: data.phone || "",
-              email: data.email || firebaseUser.email || "",
-            }));
-          } else {
-            // Fallback to just auth email if Firestore doc doesn't exist
-            setUserInfo((prev) => ({
-              ...prev,
-              email: firebaseUser.email || "",
-            }));
+            if (userDocSnap.exists()) {
+              const data = userDocSnap.data();
+              setUserInfo((prev) => ({
+                ...prev,
+                firstName: data.firstName || "",
+                lastName: data.lastName || "",
+                phone: data.phone || "",
+                email: data.email || firebaseUser.email || "",
+              }));
+            } else {
+              setUserInfo((prev) => ({
+                ...prev,
+                email: firebaseUser.email || "",
+              }));
+            }
+          } catch (err) {
+            console.error("Error fetching user document: ", err);
           }
-        } catch (err) {
-          console.error("Error fetching user document: ", err);
+        } else {
+          router.push("/");
         }
-      } else {
-        router.push("/"); // Not logged in
+        setLoading(false);
       }
+    );
 
-      setLoading(false);
-    });
-
-    return () => unsubscribe(); // Clean up
+    return () => unsubscribe();
   }, [router]);
 
-  // Input change handler
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
   };
 
-  // Handle image upload and preview
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Set image preview
     const imageUrl = URL.createObjectURL(file);
     setImagePreview(imageUrl);
 
     const storageRef = ref(storage, `profileImages/${user?.uid}/${file.name}`);
-
     try {
       const uploadTask = uploadBytesResumable(storageRef, file);
       uploadTask.on(
-        'state_changed',
+        "state_changed",
         (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           console.log(`Upload is ${progress}% done`);
         },
         (error) => {
           console.error("Error uploading image", error);
+          toast.error("Image upload failed.");
         },
         async () => {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setUserInfo((prev) => ({
             ...prev,
-            profileImage: downloadURL, // Store the URL of the uploaded image
+            profileImage: downloadURL,
           }));
+          toast.success("Profile image uploaded!");
         }
       );
     } catch (error) {
@@ -117,78 +141,118 @@ const CreateCard = () => {
     }
   };
 
-  // Handle form submit
+  const validateForm = () => {
+    if (!userInfo.firstName || !userInfo.lastName || !userInfo.email) {
+      toast.warn("First name, last name, and email are required.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
-    if (!user?.email) {
-      console.error("User not authenticated");
+  
+    if (!validateForm()) {
       setIsSubmitting(false);
       return;
     }
-
+  
     try {
-      const docRef = await addDoc(collection(db, "cards"), {
+      let baseSlug = slugify(`${userInfo.firstName}-${userInfo.lastName}`, {
+        lower: true,
+      });
+      let slug = baseSlug;
+      let counter = 1;
+  
+      // Check if the slug already exists in Firestore
+      const cardsCollectionRef = collection(db, "cards");
+      let slugExists = true;
+  
+      while (slugExists) {
+        const querySnapshot = await import("firebase/firestore").then(({ query, where, getDocs }) =>
+          getDocs(query(cardsCollectionRef, where("slug", "==", slug)))
+        );
+  
+        if (querySnapshot.empty) {
+          slugExists = false;
+        } else {
+          slug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+      }
+  
+      const docRef = await addDoc(cardsCollectionRef, {
         ...userInfo,
         email: user.email,
+        slug,
+        createdAt: new Date(),
       });
-
-      router.push(`/card/${docRef.id}`);
+  
+      toast.success("Card created successfully!");
+      router.push(`/card/${slug}`);
     } catch (error) {
       console.error("Error saving user data: ", error);
+      toast.error("Failed to create card.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center min-h-screen">
-      <ClipLoader size={50} color="#4f46e5" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <ClipLoader size={50} color="#4f46e5" />
+      </div>
+    );
 
   return (
     <>
-    <NextSeo
+      <NextSeo
         title="Create Card"
         description="Create your personalized digital business card in seconds."
         canonical="https://yourwebsite.com"
         openGraph={{
-          url: 'https://yourwebsite.com',
-          title: 'Digital Business Card Generator',
-          description: 'Create your personalized digital business card in seconds.',
+          url: "https://yourwebsite.com",
+          title: "Digital Business Card Generator",
+          description:
+            "Create your personalized digital business card in seconds.",
           images: [
             {
-              url: '../public/ogimage.png',
-              alt: 'OG Image',
+              url: "../public/ogimage.png",
+              alt: "OG Image",
             },
           ],
-          site_name: 'Cardify',
+          site_name: "Cardify",
         }}
       />
-    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
-      <div className="p-6">
-        <DashboardHeader firstName={userInfo.firstName} />
-      </div>
-      <div className="min-h-screen flex items-start justify-center px-4">
-        <div className="flex flex-col md:flex-row items-start justify-center gap-10 w-full max-w-6xl">
+
+      <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
+        <div className="p-6">
+          <DashboardHeader firstName={userInfo.firstName} />
+        </div>
+        <div className="min-h-screen flex flex-col md:flex-row items-start justify-center px-4 gap-10">
+          {/* FORM */}
           <form
             onSubmit={handleSubmit}
-            className="w-full md:w-1/2 bg-white/30 backdrop-blur-xl shadow-2xl border border-white/20 rounded-3xl p-10 space-y-6 transition-transform duration-300 hover:scale-[1.02]"
+            className="w-full md:w-1/2 bg-white/30 backdrop-blur-xl shadow-2xl border border-white/20 rounded-3xl p-10 space-y-6"
           >
             <h2 className="text-3xl font-bold text-gray-800 text-center tracking-tight">
               ✨ Create Your Digital Business Card
             </h2>
 
-            {[ 
+            {[
               { name: "firstName", placeholder: "First Name", icon: UserIcon },
               { name: "lastName", placeholder: "Last Name", icon: UserIcon },
               { name: "email", placeholder: "Email", icon: MailIcon },
               { name: "title", placeholder: "Title", icon: BriefcaseIcon },
               { name: "company", placeholder: "Company", icon: Building2Icon },
               { name: "phone", placeholder: "Phone", icon: PhoneIcon },
-              { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon },
+              {
+                name: "linkedin",
+                placeholder: "LinkedIn URL",
+                icon: LinkedinIcon,
+              },
             ].map(({ name, placeholder, icon: Icon }) => (
               <div className="relative" key={name}>
                 <input
@@ -197,18 +261,22 @@ const CreateCard = () => {
                   placeholder={placeholder}
                   value={(userInfo as any)[name]}
                   onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                 />
                 <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               </div>
             ))}
 
-            {/* Image Upload with Preview */}
+            {/* IMAGE PREVIEW */}
             <div className="relative">
-              <label htmlFor="file-upload" className="cursor-pointer text-gray-600 font-semibold block text-sm mb-2">
+              <label htmlFor="file-upload" className="block text-sm mb-2">
                 {imagePreview ? (
                   <div className="w-full h-32 bg-gray-200 rounded-xl overflow-hidden">
-                    <img src={imagePreview} alt="Profile preview" className="w-full h-full object-cover" />
+                    <img
+                      src={imagePreview}
+                      alt="Profile preview"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 ) : (
                   <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
@@ -228,15 +296,66 @@ const CreateCard = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
               disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
             >
               {isSubmitting ? "🚀 Generating Card..." : "🚀 Generate Card"}
             </button>
           </form>
+
+          {/* PREVIEW CARD */}
+          <div className="md:block w-full md:w-1/2 p-6">
+            <div className="bg-white/90 p-6 rounded-3xl shadow-2xl max-w-md mx-auto">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="User"
+                      className="w-24 h-24 mx-auto rounded-full object-cover shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                      {userInfo.firstName ? userInfo.firstName[0] : "?"}
+                    </div>
+                  )}
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 text-center">
+                  {userInfo.firstName} {userInfo.lastName}
+                </h2>
+                <p className="text-indigo-600 font-medium">{userInfo.title}</p>
+              </div>
+              <div className="mt-6 space-y-3 text-sm text-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Building2Icon className="w-5 h-5 text-indigo-500" />
+                  <span>{userInfo.company}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <PhoneIcon className="w-5 h-5 text-indigo-500" />
+                  <span>{userInfo.phone}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <EnvelopeIcon className="w-5 h-5 text-indigo-500" />
+                  <span>{userInfo.email}</span>
+                </div>
+                {userInfo.linkedin && (
+                  <div className="flex items-center space-x-2">
+                    <LinkedinIcon className="w-5 h-5 text-indigo-500" />
+                    <a
+                      href={userInfo.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      LinkedIn Profile
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 };
