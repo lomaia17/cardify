@@ -1,26 +1,29 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db, auth } from "../../utils/firebaseConfig"; // Assuming firebaseConfig exports auth as well
+import { query, collection, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { db, auth } from "../../utils/firebaseConfig"; // Firebase configuration
 import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentication imports
 import { ClipLoader } from 'react-spinners';
 import { NextSeo } from "next-seo";
 import Header from "../../components/DashboardHeader";
+import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon } from "lucide-react";
 
-import {
-  UserIcon,
-  MailIcon,
-  PhoneIcon,
-  BriefcaseIcon,
-  Building2Icon,
-  LinkedinIcon,
-} from "lucide-react";
+// Define FormData interface with all fields
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  title: string;
+  company: string;
+  phone: string;
+  linkedin: string;
+}
 
 const EditCard = () => {
   const router = useRouter();
-  const { id } = router.query;
-
-  const [formData, setFormData] = useState({
+  const { id } = router.query; // Get the 'id' from the URL (this will be the slug passed to the page)
+  
+  const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
     email: "",
@@ -34,6 +37,7 @@ const EditCard = () => {
   const [updating, setUpdating] = useState(false);
   const [user, setUser] = useState<User | null>(null); // Firebase user state
 
+  // Check if the user is authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
@@ -47,29 +51,34 @@ const EditCard = () => {
     return () => unsubscribe(); // Cleanup on component unmount
   }, [router]);
 
+  // Fetch card data when `id` is available and user is logged in
   useEffect(() => {
-    if (!id || !user?.email) return; // Ensure user is not null and email exists
-  
+    if (!id || typeof id !== 'string' || !user?.email) {
+      return; // Return early if id or user email is unavailable
+    }
+
     const fetchCard = async () => {
       try {
-        const docRef = doc(db, "cards", id as string);
-        const docSnap = await getDoc(docRef);
-  
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-  
+        const q = query(collection(db, "cards"), where("slug", "==", id)); // Query by slug (id)
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const cardData = querySnapshot.docs[0].data();
+          console.log("Fetched card data:", cardData);
+
           // Normalize both emails to lowercase and trim any extra spaces
-          const cardEmail = data?.email?.toLowerCase().trim();
+          const cardEmail = cardData?.email?.toLowerCase().trim();
           const loggedInEmail = user?.email?.toLowerCase().trim();
-  
+
           // Check if the card email matches the logged-in user's email
           if (cardEmail !== loggedInEmail) {
             alert("You are not authorized to edit this card.");
             router.push("/"); // Redirect to home if not authorized
             return;
           }
-  
-          setFormData(data as any);
+
+          // Set fetched card data into formData
+          setFormData(cardData as FormData);
         } else {
           alert("Card not found.");
           router.push("/"); // Redirect if card not found
@@ -77,24 +86,35 @@ const EditCard = () => {
       } catch (error) {
         console.error("Error fetching card:", error);
       } finally {
-        setLoading(false);
+        setLoading(false); // Set loading to false when done fetching data
       }
     };
-  
+
     fetchCard();
   }, [id, user?.email, router]);
 
+  // Handle form input change
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Handle form submission to update the card data
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setUpdating(true);
     try {
-      const docRef = doc(db, "cards", id as string);
-      await updateDoc(docRef, formData);
-      router.push(`/card/${id}`);
+      const q = query(collection(db, "cards"), where("slug", "==", id));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docRef = doc(db, "cards", querySnapshot.docs[0].id); // Get document reference using slug
+
+        // Ensure that formData is cast to the appropriate type
+        await updateDoc(docRef, { ...formData }); // Spread formData into an object
+        router.push(`/card/${id}`);
+      } else {
+        alert("Card not found.");
+        router.push("/"); // Redirect if card not found
+      }
     } catch (error) {
       console.error("Error updating card:", error);
     } finally {
@@ -102,16 +122,18 @@ const EditCard = () => {
     }
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center min-h-screen">
-      <ClipLoader size={50} color="#4f46e5" />
-    </div>
-  );
+  if (loading || !id) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <ClipLoader size={50} color="#4f46e5" />
+      </div>
+    );
+  }
 
   if (!user?.email) {
     return <p className="text-center py-10">Unauthorized access. Please sign in.</p>;
   }
-// TODO:: Add Preview , Edit Slug
+
   return (
     <>
     <NextSeo
