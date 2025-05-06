@@ -1,31 +1,39 @@
 import Link from "next/link";
-import { NextSeo } from 'next-seo';
-import { SparklesIcon, DevicePhoneMobileIcon, RocketLaunchIcon, UserGroupIcon, BriefcaseIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
+import { NextSeo } from "next-seo";
+import {
+  SparklesIcon,
+  DevicePhoneMobileIcon,
+  RocketLaunchIcon,
+  UserGroupIcon,
+  BriefcaseIcon,
+  GlobeAltIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Index() {
   return (
     <>
- <NextSeo
+      <NextSeo
         title="Digital Business Card Generator"
         description="Create your personalized digital business card in seconds."
         canonical="https://yourwebsite.com"
         openGraph={{
-          url: 'https://yourwebsite.com',
-          title: 'Digital Business Card Generator',
-          description: 'Create your personalized digital business card in seconds.',
+          url: "https://yourwebsite.com",
+          title: "Digital Business Card Generator",
+          description:
+            "Create your personalized digital business card in seconds.",
           images: [
             {
-              url: '../public/ogimage.png',
-              alt: 'OG Image',
+              url: "../public/ogimage.png",
+              alt: "OG Image",
             },
           ],
-          site_name: 'Cardify',
+          site_name: "Cardify",
         }}
       />
       <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-100 text-gray-800">
         {/* Header */}
-        <header className="py-6 px-8 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">✨Cardify</h1>
+        <header className="sticky top-0 z-50 backdrop-blur bg-white/80  py-4 px-8 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">✨Cardify</h1>
           <Link
             href="/login"
             className="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition"
@@ -35,17 +43,40 @@ export default function Index() {
         </header>
 
         {/* Hero Section */}
-        <section className="text-center py-24 px-6">
-          <h2 className="text-5xl font-extrabold mb-4">Create Your Digital Business Card</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Impress your network with a sleek and shareable digital card. It's fast, easy, and completely free.
-          </p>
-          <Link
-            href="/login"
-            className="mt-8 inline-block bg-indigo-600 text-white font-semibold px-8 py-3 rounded-full text-lg hover:bg-indigo-700 transition"
-          >
-            🚀 Create My Card
-          </Link>
+        <section className="relative py-24 px-6 sm:px-8 text-center overflow-hidden bg-gradient-to-br from-purple-100 via-pink-50 to-yellow-50">
+          {/* Decorative Glowing Blobs */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute -top-28 -left-28 w-80 h-80 bg-purple-400 opacity-20 rounded-full blur-[120px] animate-pulse"></div>
+            <div className="absolute -bottom-28 -right-28 w-[28rem] h-[28rem] bg-yellow-300 opacity-20 rounded-full blur-[140px] animate-pulse"></div>
+          </div>
+
+          <div className="max-w-4xl mx-auto relative z-10">
+          <h2 className="text-5xl sm:text-6xl font-extrabold leading-tight bg-gradient-to-r from-purple-700 via-pink-500 to-yellow-500 text-transparent bg-clip-text mb-8 tracking-tight drop-shadow-xl">
+  Your Card. Your Identity.
+</h2>
+            <p className="text-lg sm:text-xl text-gray-700 max-w-2xl mx-auto mb-10 leading-relaxed">
+              Make a lasting impression with a sleek, shareable digital business
+              card.
+              <br className="hidden sm:inline" />
+              Perfect for creators, professionals, and entrepreneurs.
+            </p>
+
+            <Link
+              href="/login"
+              className="inline-block bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-8 py-3 rounded-full text-lg hover:scale-105 transition duration-300 shadow-lg"
+            >
+              🚀 Get Started for Free
+            </Link>
+
+            {/* Mockup Image */}
+            <div className="mt-20 flex justify-center">
+              <img
+                src="/mockup.png"
+                alt="Digital Business Card Preview"
+                className="w-full max-w-md sm:max-w-lg shadow-2xl rounded-3xl border border-gray-200 transition-transform duration-500 hover:scale-105"
+              />
+            </div>
+          </div>
         </section>
 
         {/* Features Section */}
@@ -94,11 +125,15 @@ export default function Index() {
           <h3 className="text-3xl font-bold mb-10">Loved by Users</h3>
           <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
             <div className="bg-purple-50 rounded-xl p-6 shadow">
-              <p className="text-lg italic mb-2">"So easy to use and looks amazing!"</p>
+              <p className="text-lg italic mb-2">
+                "So easy to use and looks amazing!"
+              </p>
               <p className="font-semibold">— Maya, UX Designer</p>
             </div>
             <div className="bg-purple-50 rounded-xl p-6 shadow">
-              <p className="text-lg italic mb-2">"Helped me connect quickly at a tech event."</p>
+              <p className="text-lg italic mb-2">
+                "Helped me connect quickly at a tech event."
+              </p>
               <p className="font-semibold">— Omar, Startup Founder</p>
             </div>
           </div>
@@ -106,7 +141,9 @@ export default function Index() {
 
         {/* CTA */}
         <section className="text-center py-20 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-400 text-white">
-          <h3 className="text-4xl font-bold mb-6">Make a Great First Impression</h3>
+          <h3 className="text-4xl font-bold mb-6">
+            Make a Great First Impression
+          </h3>
           <Link
             href="/login"
             className="inline-block bg-white text-purple-700 font-semibold px-10 py-4 rounded-full text-lg hover:bg-gray-100 transition"
@@ -117,7 +154,11 @@ export default function Index() {
 
         {/* Footer */}
         <footer className="text-center py-10 text-gray-600 bg-white text-sm">
-          Made with 💜 by <a href="https://r2.software" className="underline">R2 Software</a> • © {new Date().getFullYear()} All rights reserved
+          Made with 💜 by{" "}
+          <a href="https://r2.software" className="underline">
+            R2 Software
+          </a>{" "}
+          • © {new Date().getFullYear()} All rights reserved
         </footer>
       </div>
     </>
