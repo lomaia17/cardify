@@ -233,6 +233,14 @@ export default function Index() {
             🎉 Start Now
           </Link>
         </section>
+          {/* Footer */}
+          <footer className="text-center py-10 text-gray-600 bg-white text-sm">
+          Made with 💜 by{" "}
+          <a href="https://r2.software" className="underline">
+            R2 Software
+          </a>{" "}
+          • © {new Date().getFullYear()} All rights reserved
+        </footer>
       </div>
     </>
   );
