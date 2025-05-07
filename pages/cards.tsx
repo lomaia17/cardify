@@ -117,7 +117,7 @@ export default function Dashboard() {
             "Create your personalized digital business card in seconds.",
           images: [
             {
-              url: "../public/ogimage.png",
+              url: "../ogimage.png",
               alt: "OG Image",
             },
           ],

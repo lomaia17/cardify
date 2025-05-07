@@ -57,7 +57,7 @@ export default function Register() {
               description: 'Create your personalized digital business card in seconds.',
               images: [
                 {
-                  url: '../public/ogimage.png',
+                  url: '../ogimage.png',
                   alt: 'OG Image',
                 },
               ],
@@ -65,8 +65,8 @@ export default function Register() {
             }}
           />
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl space-y-6">
-        <h2 className="text-3xl font-bold text-center text-gray-800">📝 Register</h2>
+      <div className="w-full max-w-md bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl ">
+        <h2 className="text-3xl font-bold text-center text-gray-800 pb-6">📝 Register</h2>
         <form onSubmit={handleRegister} className="space-y-5">
           <input
             type="text"
@@ -120,7 +120,7 @@ export default function Register() {
             🚀 Register
           </button>
         </form>
-        <p className="text-center text-sm text-gray-700">
+        <p className="text-center text-sm text-gray-700 pt-6">
           Already have an account?{" "}
           <a href="/login" className="text-purple-600 font-medium hover:underline">
             Login

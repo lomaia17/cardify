@@ -46,7 +46,7 @@ export default function Login() {
               description: 'Create your personalized digital business card in seconds.',
               images: [
                 {
-                  url: '../public/ogimage.png',
+                  url: '../ogimage.png',
                   alt: 'OG Image',
                 },
               ],
@@ -54,8 +54,8 @@ export default function Login() {
             }}
           />
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl space-y-6">
-        <h2 className="text-3xl font-bold text-center text-gray-800">🔐 Login</h2>
+      <div className="w-full max-w-md bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
+        <h2 className="text-3xl font-bold text-center text-gray-800 pb-6">🔐 Login</h2>
 
         <form onSubmit={handleLogin} className="space-y-5">
           <input
