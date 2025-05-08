@@ -1,12 +1,27 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
-import { query, collection, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import {
+  query,
+  collection,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
 import { db, auth } from "../../utils/firebaseConfig"; // Firebase configuration
 import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentication imports
-import { ClipLoader } from 'react-spinners';
+import { ClipLoader } from "react-spinners";
 import { NextSeo } from "next-seo";
 import Header from "../../components/DashboardHeader";
-import { UserIcon, MailIcon, PhoneIcon, BriefcaseIcon, Building2Icon, LinkedinIcon, Link } from "lucide-react";
+import {
+  UserIcon,
+  MailIcon,
+  PhoneIcon,
+  BriefcaseIcon,
+  Building2Icon,
+  LinkedinIcon,
+  Link,
+} from "lucide-react";
 
 // Define FormData interface with all fields
 interface FormData {
@@ -23,7 +38,7 @@ interface FormData {
 const EditCard = () => {
   const router = useRouter();
   const { id } = router.query; // Get the 'id' from the URL (this will be the slug passed to the page)
-  
+
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -38,6 +53,7 @@ const EditCard = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [user, setUser] = useState<User | null>(null); // Firebase user state
+  const [slugError, setSlugError] = useState("");
 
   // Check if the user is authenticated
   useEffect(() => {
@@ -55,7 +71,7 @@ const EditCard = () => {
 
   // Fetch card data when `id` is available and user is logged in
   useEffect(() => {
-    if (!id || typeof id !== 'string' || !user?.email) {
+    if (!id || typeof id !== "string" || !user?.email) {
       return; // Return early if id or user email is unavailable
     }
 
@@ -104,38 +120,55 @@ const EditCard = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setUpdating(true);
-  
+
     try {
-      // Check if the slug already exists in the 'cards' collection
-      const q = query(collection(db, "cards"), where("slug", "==", formData.slug));
-      const querySnapshot = await getDocs(q);
-  
-      if (!querySnapshot.empty) {
-        // If the slug already exists, show an error or handle as needed
-        alert("This slug is already taken. Please choose a different one.");
-        setUpdating(false);
-        return;
-      }
-  
-      // Proceed with updating the card
-      const cardQuery = query(collection(db, "cards"), where("slug", "==", id));
-      const cardSnapshot = await getDocs(cardQuery);
-  
-      if (!cardSnapshot.empty) {
-        const docRef = doc(db, "cards", cardSnapshot.docs[0].id); // Get the document reference
-        await updateDoc(docRef, { ...formData }); // Update the card with the new slug and data
-        router.push(`/card/${formData.slug}`); // Redirect to the new slug URL
-      } else {
+      // Step 1: Find the current card by the old slug
+      const currentCardQuery = query(
+        collection(db, "cards"),
+        where("slug", "==", id)
+      );
+      const currentCardSnapshot = await getDocs(currentCardQuery);
+
+      if (currentCardSnapshot.empty) {
         alert("Card not found.");
         router.push("/");
+        return;
       }
+
+      const currentDoc = currentCardSnapshot.docs[0];
+      const currentDocId = currentDoc.id;
+
+      // Step 2: Check if the new slug exists and doesn't belong to the current card
+      const slugQuery = query(
+        collection(db, "cards"),
+        where("slug", "==", formData.slug)
+      );
+      const slugSnapshot = await getDocs(slugQuery);
+
+      const slugTaken = slugSnapshot.docs.some(
+        (doc) => doc.id !== currentDocId
+      );
+
+      if (slugTaken) {
+        setSlugError(
+          "This slug is already taken. Please choose a different one."
+        );
+        setUpdating(false);
+        return;
+      } else {
+        setSlugError(""); // Clear any previous error
+      }
+
+      // Step 3: Update the card
+      const docRef = doc(db, "cards", currentDocId);
+      await updateDoc(docRef, { ...formData });
+      router.push(`/card/${formData.slug}`);
     } catch (error) {
       console.error("Error updating card:", error);
     } finally {
       setUpdating(false);
     }
   };
-  
 
   if (loading || !id) {
     return (
@@ -146,100 +179,119 @@ const EditCard = () => {
   }
 
   if (!user?.email) {
-    return <p className="text-center py-10">Unauthorized access. Please sign in.</p>;
+    return (
+      <p className="text-center py-10">Unauthorized access. Please sign in.</p>
+    );
   }
 
   return (
     <>
-    <NextSeo
+      <NextSeo
         title="Edit Card"
         description="Create your personalized digital business card in seconds."
         canonical="https://yourwebsite.com"
         openGraph={{
-          url: 'https://yourwebsite.com',
-          title: 'Digital Business Card Generator',
-          description: 'Create your personalized digital business card in seconds.',
+          url: "https://yourwebsite.com",
+          title: "Digital Business Card Generator",
+          description:
+            "Create your personalized digital business card in seconds.",
           images: [
             {
-              url: '../../ogimage.png',
-              alt: 'OG Image',
+              url: "../../ogimage.png",
+              alt: "OG Image",
             },
           ],
-          site_name: 'Cardify',
+          site_name: "Cardify",
         }}
       />
-    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
-      <div className="p-6">
-      <Header firstName={formData.firstName || ""} />
-      </div>
-      <div className="min-h-screen flex items-start justify-center py-12 px-4">
-        <div className="w-full max-w-2xl bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
-        
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
-            🛠️ Edit Your Business Card
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {[ 
-              { name: "firstName", placeholder: "First Name", icon: UserIcon },
-              { name: "lastName", placeholder: "Last Name", icon: UserIcon },
-              { name: "email", placeholder: "Email", icon: MailIcon },
-              { name: "title", placeholder: "Title", icon: BriefcaseIcon },
-              { name: "company", placeholder: "Company", icon: Building2Icon },
-              { name: "phone", placeholder: "Phone", icon: PhoneIcon },
-              { name: "linkedin", placeholder: "LinkedIn URL", icon: LinkedinIcon },
-            ].map(({ name, placeholder, icon: Icon }) => (
-              <div className="relative" key={name}>
-                <input
-                  type={name === "email" ? "email" : "text"}
-                  name={name}
-                  placeholder={placeholder}
-                  value={(formData as any)[name]}
-                  onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-                <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              </div>
-            ))}
-            {[
-              {
-                name: "slug",
-                placeholder: "Change Slug",
-                icon: Link,
-              },
-            ].map(({ name, placeholder, icon: Icon }) => (
-                            <div className="relative">
-                <div className="flex items-center rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus-within:ring-2 focus-within:ring-purple-400 overflow-hidden">
-                  {/* Icon on the left */}
-                  <Link className="ml-4 text-gray-400 w-5 h-5" />
-
-                  {/* Static slug prefix */}
-                  <span className="px-2 pr-0 text-gray-500 text-sm whitespace-nowrap">
-                    {typeof window !== "undefined" ? `${window.location.origin}/card/` : ""}
-                  </span>
-
-                  {/* Input field */}
+      <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
+        <div className="p-6">
+          <Header firstName={formData.firstName || ""} />
+        </div>
+        <div className="min-h-screen flex items-start justify-center py-12 px-4">
+          <div className="w-full max-w-2xl bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
+            <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
+              🛠️ Edit Your Business Card
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {[
+                {
+                  name: "firstName",
+                  placeholder: "First Name",
+                  icon: UserIcon,
+                },
+                { name: "lastName", placeholder: "Last Name", icon: UserIcon },
+                { name: "email", placeholder: "Email", icon: MailIcon },
+                { name: "title", placeholder: "Title", icon: BriefcaseIcon },
+                {
+                  name: "company",
+                  placeholder: "Company",
+                  icon: Building2Icon,
+                },
+                { name: "phone", placeholder: "Phone", icon: PhoneIcon },
+                {
+                  name: "linkedin",
+                  placeholder: "LinkedIn URL",
+                  icon: LinkedinIcon,
+                },
+              ].map(({ name, placeholder, icon: Icon }) => (
+                <div className="relative" key={name}>
                   <input
-                    type="text"
-                    name="slug"
-                    placeholder="your-slug"
-                    value={formData.slug}
+                    type={name === "email" ? "email" : "text"}
+                    name={name}
+                    placeholder={placeholder}
+                    value={(formData as any)[name]}
                     onChange={handleChange}
-                    className="flex-1 px-2 pl-1 py-3 bg-transparent focus:outline-none"
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
                   />
+                  <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 </div>
-              </div>
-            ))}
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
-              disabled={updating}
-            >
-              {updating ? "Updating..." : "💾 Save Changes"}
-            </button>
-          </form>
+              ))}
+              {[
+                {
+                  name: "slug",
+                  placeholder: "Change Slug",
+                  icon: Link,
+                },
+              ].map(({ name, placeholder, icon: Icon }) => (
+                <div className="relative">
+                  <div className="flex items-center rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus-within:ring-2 focus-within:ring-purple-400 overflow-hidden">
+                    {/* Icon on the left */}
+                    <Link className="ml-4 text-gray-400 w-5 h-5" />
+
+                    {/* Static slug prefix */}
+                    <span className="px-2 pr-0 text-gray-500 text-sm whitespace-nowrap">
+                      {typeof window !== "undefined"
+                        ? `${window.location.origin}/card/`
+                        : ""}
+                    </span>
+
+                    {/* Input field */}
+                    <input
+                      type="text"
+                      name="slug"
+                      placeholder="your-slug"
+                      value={formData.slug}
+                      onChange={handleChange}
+                      className="flex-1 px-2 pl-1 py-3 bg-transparent focus:outline-none"
+                    />
+                  </div>
+                  {slugError && (
+                      <p className="text-red-500 text-sm mt-3">{slugError}</p>
+                    )}
+                </div>
+              ))}
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
+                disabled={updating}
+              >
+                {updating ? "Updating..." : "💾 Save Changes"}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 };
