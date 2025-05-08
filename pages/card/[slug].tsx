@@ -1,19 +1,31 @@
-// pages/card/[slug].tsx
-import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import { auth, db } from "../../utils/firebaseConfig"; // Import Firebase config
 import Card from "../../components/Card";
 import { fetchCardData } from "../../utils/fetchCardData";
+import DashboardHeader from "../../components/DashboardHeader";
 
 const CardPage = () => {
   const router = useRouter();
-  const { slug } = router.query; // Getting 'slug' from the URL
-
+  const { slug } = router.query; // Get 'slug' from the URL
+  const [session, setSession] = useState<User | null>(null); // Local session state
   const [cardData, setCardData] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use onAuthStateChanged to monitor the authentication state
   useEffect(() => {
-    // Ensure that slug exists before making the fetch call
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setSession(user); // Set session to the current authenticated user
+    });
+
+    // Clean up the subscription when the component unmounts
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch card data when slug changes
+  useEffect(() => {
     if (slug) {
       const getData = async () => {
         setLoading(true);
@@ -34,7 +46,7 @@ const CardPage = () => {
       };
       getData();
     }
-  }, [slug]); // Trigger fetch when slug changes
+  }, [slug]);
 
   if (loading) {
     return (
@@ -73,8 +85,14 @@ const CardPage = () => {
     fullName,
   };
 
+  // Show the DashboardHeader only if the session user matches the card owner
+  const showDashboardHeader = session?.email === cardData?.email;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 to-pink-100">
+      {showDashboardHeader && <>  <div className="p-6">
+                <DashboardHeader firstName={cardData.firstName} />
+              </div></>}
       <div className="flex items-center justify-center py-16 px-4">
         <div className="w-full max-w-3xl">
           <Card cardData={finalCardData} />
