@@ -21,6 +21,12 @@ interface CardData {
   company?: string;
   linkedin?: string;
   slug?: string;
+  cardStyles?: CardStyles;
+}
+interface CardStyles {
+  backgroundColor: string;
+  textColor: string;
+  iconColor: string;
 }
 
 // Define CardProps interface
@@ -103,14 +109,23 @@ const Card = ({ cardData }: CardProps) => {
 
   // If no cardData is available, return null
   if (!cardData) return null;
-
+  console.log(cardData);
+  const style = cardData.cardStyles || {
+    backgroundColor: "bg-white/80",
+    textColor: "text-gray-800",
+    iconColor: "text-indigo-500",
+  };
   return (
-    <div className="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl p-8 w-full space-y-6 transition duration-300 hover:shadow-blue-200">
+    <div
+      className={`${style.backgroundColor} backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl p-8 w-full space-y-6 transition duration-300 hover:shadow-lg`}
+    >
       <div className="text-center">
-        <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+        <div
+          className={`w-24 h-24 mx-auto rounded-full ${style.backgroundColor} flex items-center justify-center text-white text-3xl font-bold shadow-lg`}
+        >
           {cardData.fullName ? cardData.fullName[0] : "?"}
         </div>
-        <h2 className="mt-4 text-2xl font-bold text-gray-800">
+        <h2 className={`mt-4 text-2xl font-bold ${style.textColor}`}>
           {cardData.fullName || cardData.name || "No Name Available"}
         </h2>
         <p className="text-sm text-gray-500">
@@ -120,25 +135,25 @@ const Card = ({ cardData }: CardProps) => {
 
       <div className="space-y-4 text-sm">
         {cardData.email && (
-          <div className="flex items-center text-gray-600">
-            <EnvelopeIcon className="h-5 w-5 mr-3 text-indigo-500" />
+          <div className={`flex items-center ${style.textColor}`}>
+            <EnvelopeIcon className={`h-5 w-5 mr-3 ${style.iconColor}`} />
             <span>{cardData.email}</span>
           </div>
         )}
         {cardData.phone && (
-          <div className="flex items-center text-gray-600">
-            <PhoneIcon className="h-5 w-5 mr-3 text-indigo-500" />
+          <div className={`flex items-center ${style.textColor}`}>
+            <PhoneIcon className={`h-5 w-5 mr-3 ${style.iconColor}`} />
             <span>{cardData.phone}</span>
           </div>
         )}
         {cardData.company && (
-          <div className="flex items-center text-gray-600">
-            <BriefcaseIcon className="h-5 w-5 mr-3 text-indigo-500" />
+          <div className={`flex items-center ${style.textColor}`}>
+            <BriefcaseIcon className={`h-5 w-5 mr-3 ${style.iconColor}`} />
             <span>{cardData.company}</span>
           </div>
         )}
-        <div className="flex items-center text-gray-600">
-          <BuildingOfficeIcon className="h-5 w-5 mr-3 text-indigo-500" />
+        <div className={`flex items-center ${style.textColor}`}>
+          <BuildingOfficeIcon className={`h-5 w-5 mr-3 ${style.iconColor}`} />
           <span>Business</span>
         </div>
         {cardData.linkedin && (

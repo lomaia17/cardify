@@ -23,7 +23,73 @@ import {
   Link,
 } from "lucide-react";
 
-// Define FormData interface with all fields
+const colorOptions = [
+  {
+    label: "Neutral Light",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-gray-100 to-gray-300",
+      textColor: "text-gray-800",
+      iconColor: "text-gray-600",
+    },
+  },
+  {
+    label: "Ocean Blue",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-blue-500 to-blue-700",
+      textColor: "text-white",
+      iconColor: "text-white",
+    },
+  },
+  {
+    label: "Emerald Green",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-emerald-400 to-emerald-600",
+      textColor: "text-white",
+      iconColor: "text-white",
+    },
+  },
+  {
+    label: "Sunset Orange",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-orange-400 to-red-500",
+      textColor: "text-white",
+      iconColor: "text-white",
+    },
+  },
+  {
+    label: "Deep Purple",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-purple-600 to-indigo-700",
+      textColor: "text-white",
+      iconColor: "text-white",
+    },
+  },
+  {
+    label: "Soft Rose",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-rose-300 to-rose-500",
+      textColor: "text-white",
+      iconColor: "text-white",
+    },
+  },
+  {
+    label: "Slate Gray",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-slate-600 to-slate-800",
+      textColor: "text-white",
+      iconColor: "text-gray-300",
+    },
+  },
+  {
+    label: "Golden Yellow",
+    value: {
+      backgroundColor: "bg-gradient-to-r from-yellow-300 to-yellow-500",
+      textColor: "text-gray-900",
+      iconColor: "text-gray-800",
+    },
+  },
+];
+
 interface FormData {
   firstName: string;
   lastName: string;
@@ -33,11 +99,16 @@ interface FormData {
   phone: string;
   linkedin: string;
   slug: string;
+  cardStyles?: {
+    backgroundColor: string;
+    textColor: string;
+    iconColor: string;
+  };
 }
 
 const EditCard = () => {
   const router = useRouter();
-  const { id } = router.query; // Get the 'id' from the URL (this will be the slug passed to the page)
+  const { id } = router.query;
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -52,77 +123,74 @@ const EditCard = () => {
 
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [user, setUser] = useState<User | null>(null); // Firebase user state
+  const [user, setUser] = useState<User | null>(null);
   const [slugError, setSlugError] = useState("");
 
-  // Check if the user is authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
-        // Redirect to home if user is not authenticated
-        router.push("/");
+        router.push("/"); // Redirect to home if user is not authenticated
       } else {
         setUser(firebaseUser);
       }
     });
 
-    return () => unsubscribe(); // Cleanup on component unmount
+    return () => unsubscribe();
   }, [router]);
 
-  // Fetch card data when `id` is available and user is logged in
   useEffect(() => {
     if (!id || typeof id !== "string" || !user?.email) {
-      return; // Return early if id or user email is unavailable
+      return;
     }
 
     const fetchCard = async () => {
       try {
-        const q = query(collection(db, "cards"), where("slug", "==", id)); // Query by slug (id)
+        const q = query(collection(db, "cards"), where("slug", "==", id));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
           const cardData = querySnapshot.docs[0].data();
-          console.log("Fetched card data:", cardData);
 
-          // Normalize both emails to lowercase and trim any extra spaces
           const cardEmail = cardData?.email?.toLowerCase().trim();
           const loggedInEmail = user?.email?.toLowerCase().trim();
 
-          // Check if the card email matches the logged-in user's email
           if (cardEmail !== loggedInEmail) {
             alert("You are not authorized to edit this card.");
-            router.push("/"); // Redirect to home if not authorized
+            router.push("/"); // Redirect if not authorized
             return;
           }
 
-          // Set fetched card data into formData
           setFormData(cardData as FormData);
         } else {
           alert("Card not found.");
-          router.push("/"); // Redirect if card not found
+          router.push("/");
         }
       } catch (error) {
         console.error("Error fetching card:", error);
       } finally {
-        setLoading(false); // Set loading to false when done fetching data
+        setLoading(false);
       }
     };
 
     fetchCard();
   }, [id, user?.email, router]);
 
-  // Handle form input change
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle form submission to update the card data
+  const handleColorChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const selected = colorOptions.find((opt) => opt.label === e.target.value);
+    if (selected) {
+      setFormData({ ...formData, cardStyles: selected.value });
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setUpdating(true);
 
     try {
-      // Step 1: Find the current card by the old slug
       const currentCardQuery = query(
         collection(db, "cards"),
         where("slug", "==", id)
@@ -138,7 +206,6 @@ const EditCard = () => {
       const currentDoc = currentCardSnapshot.docs[0];
       const currentDocId = currentDoc.id;
 
-      // Step 2: Check if the new slug exists and doesn't belong to the current card
       const slugQuery = query(
         collection(db, "cards"),
         where("slug", "==", formData.slug)
@@ -159,7 +226,6 @@ const EditCard = () => {
         setSlugError(""); // Clear any previous error
       }
 
-      // Step 3: Update the card
       const docRef = doc(db, "cards", currentDocId);
       await updateDoc(docRef, { ...formData });
       router.push(`/card/${formData.slug}`);
@@ -220,15 +286,31 @@ const EditCard = () => {
                   placeholder: "First Name",
                   icon: UserIcon,
                 },
-                { name: "lastName", placeholder: "Last Name", icon: UserIcon },
-                { name: "email", placeholder: "Email", icon: MailIcon },
-                { name: "title", placeholder: "Title", icon: BriefcaseIcon },
+                {
+                  name: "lastName",
+                  placeholder: "Last Name",
+                  icon: UserIcon,
+                },
+                {
+                  name: "email",
+                  placeholder: "Email",
+                  icon: MailIcon,
+                },
+                {
+                  name: "title",
+                  placeholder: "Title",
+                  icon: BriefcaseIcon,
+                },
                 {
                   name: "company",
                   placeholder: "Company",
                   icon: Building2Icon,
                 },
-                { name: "phone", placeholder: "Phone", icon: PhoneIcon },
+                {
+                  name: "phone",
+                  placeholder: "Phone",
+                  icon: PhoneIcon,
+                },
                 {
                   name: "linkedin",
                   placeholder: "LinkedIn URL",
@@ -247,49 +329,61 @@ const EditCard = () => {
                   <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 </div>
               ))}
-              {[
-                {
-                  name: "slug",
-                  placeholder: "Change Slug",
-                  icon: Link,
-                },
-              ].map(({ name, placeholder, icon: Icon }) => (
-                <div className="relative">
-                  <div className="flex items-center rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus-within:ring-2 focus-within:ring-purple-400 overflow-hidden">
-                    {/* Icon on the left */}
-                    <Link className="ml-4 text-gray-400 w-5 h-5" />
-
-                    {/* Static slug prefix */}
-                    <span className="px-2 pr-0 text-gray-500 text-sm whitespace-nowrap">
-                      {typeof window !== "undefined"
-                        ? `${window.location.origin}/card/`
-                        : ""}
-                    </span>
-
-                    {/* Input field */}
+              {[{ name: "slug", placeholder: "Change Slug", icon: Link }].map(
+                ({ name, placeholder, icon: Icon }) => (
+                  <div className="relative" key={name}>
                     <input
                       type="text"
-                      name="slug"
-                      placeholder="your-slug"
-                      value={formData.slug}
+                      name={name}
+                      placeholder={placeholder}
+                      value={(formData as any)[name]}
                       onChange={handleChange}
-                      className="flex-1 px-2 pl-1 py-3 bg-transparent focus:outline-none"
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
                     />
-                  </div>
-                  {slugError && (
-                      <p className="text-red-500 text-sm mt-3">{slugError}</p>
+                    <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    {slugError && (
+                      <p className="text-sm text-red-600 mt-2">{slugError}</p>
                     )}
-                </div>
-              ))}
+                  </div>
+                )
+              )}
+
+              <div>
+                <label className="block text-gray-700 mb-2 font-medium">
+                  Choose Color Theme
+                </label>
+                <select
+                  onChange={handleColorChange}
+                  className="w-full pl-4 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  value={
+                    colorOptions.find(
+                      (opt) =>
+                        opt.value.backgroundColor ===
+                        formData.cardStyles?.backgroundColor
+                    )?.label || ""
+                  }
+                >
+                  <option value="">Select a theme</option>
+                  {colorOptions.map((option) => (
+                    <option key={option.label} value={option.label}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
                 disabled={updating}
+                className={`w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition duration-300 ${
+                  updating ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               >
-                {updating ? "Updating..." : "💾 Save Changes"}
+                {updating ? "Updating..." : "Save Changes"}
               </button>
             </form>
           </div>
+          
         </div>
       </div>
     </>
