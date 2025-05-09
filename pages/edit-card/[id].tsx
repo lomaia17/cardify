@@ -22,7 +22,7 @@ import {
   LinkedinIcon,
   Link,
 } from "lucide-react";
-
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
 const colorOptions = [
   {
     label: "Neutral Light",
@@ -99,7 +99,7 @@ interface FormData {
   phone: string;
   linkedin: string;
   slug: string;
-  cardStyles?: {
+  cardStyles: {
     backgroundColor: string;
     textColor: string;
     iconColor: string;
@@ -119,6 +119,7 @@ const EditCard = () => {
     phone: "",
     linkedin: "",
     slug: "",
+    cardStyles: colorOptions[0].value,
   });
 
   const [loading, setLoading] = useState(true);
@@ -348,29 +349,28 @@ const EditCard = () => {
                 )
               )}
 
-              <div>
-                <label className="block text-gray-700 mb-2 font-medium">
-                  Choose Color Theme
-                </label>
-                <select
-                  onChange={handleColorChange}
-                  className="w-full pl-4 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  value={
-                    colorOptions.find(
-                      (opt) =>
-                        opt.value.backgroundColor ===
-                        formData.cardStyles?.backgroundColor
-                    )?.label || ""
-                  }
-                >
-                  <option value="">Select a theme</option>
-                  {colorOptions.map((option) => (
-                    <option key={option.label} value={option.label}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+<div>
+  <label htmlFor="colorTheme" className="block mb-2 font-medium text-gray-700">
+    Select Card Theme
+  </label>
+  <select
+    id="colorTheme"
+    onChange={handleColorChange}
+    className="w-full p-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+    value={
+      colorOptions.find((opt) =>
+        JSON.stringify(opt.value) === JSON.stringify(formData.cardStyles)
+      )?.label || ""
+    }
+  >
+    <option value="">Select a theme</option>
+    {colorOptions.map((option) => (
+      <option key={option.label} value={option.label}>
+        {option.label}
+      </option>
+    ))}
+  </select>
+</div>
 
               <button
                 type="submit"
@@ -383,7 +383,51 @@ const EditCard = () => {
               </button>
             </form>
           </div>
-          
+                        {/* PREVIEW CARD */}
+  <div className="md:block w-full md:w-1/2 p-6">
+    <div
+      className={`p-6 rounded-3xl shadow-2xl max-w-md mx-auto ${formData.cardStyles.backgroundColor}`}
+    >
+      <div className="flex flex-col items-center space-y-4">
+        <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden">
+            <div className={`${formData.cardStyles.backgroundColor} flex items-center justify-center w-full h-full`}>
+              {formData.firstName ? formData.firstName[0] : "?"}
+            </div>
+        </div>
+        <h2 className={`text-2xl font-bold text-center ${formData.cardStyles.textColor}`}>
+          {formData.firstName} {formData.lastName}
+        </h2>
+        <p className="text-indigo-600 font-medium">{formData.title}</p>
+      </div>
+      <div className="mt-6 space-y-3 text-sm">
+        <div className="flex items-center space-x-2">
+          <Building2Icon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
+          <span className={formData.cardStyles.textColor}>{formData.company}</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <PhoneIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
+          <span className={formData.cardStyles.textColor}>{formData.phone}</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <EnvelopeIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
+          <span className={formData.cardStyles.textColor}>{formData.email}</span>
+        </div>
+        {formData.linkedin && (
+          <div className="flex items-center space-x-2">
+            <LinkedinIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
+            <a
+              href={formData.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              LinkedIn Profile
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
         </div>
       </div>
     </>
