@@ -563,21 +563,6 @@ const CreateCard = () => {
                   <EnvelopeIcon className={`w-5 h-5 ${cardStyles.iconColor}`} />
                   <span className={cardStyles.textColor}>{userInfo.email}</span>
                 </div>
-                {userInfo.linkedin && (
-                  <div className="flex items-center space-x-2">
-                    <LinkedinIcon
-                      className={`w-5 h-5 ${cardStyles.iconColor}`}
-                    />
-                    <a
-                      href={userInfo.linkedin}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      LinkedIn Profile
-                    </a>
-                  </div>
-                )}
               </div>
 
               {/* Social Links */}
