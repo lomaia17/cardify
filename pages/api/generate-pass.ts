@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { doc, getDoc } from '../../utils/firebaseConfig';
-import { bucket } from '../../utils/firebaseAdmin';
+import { bucket, db } from '../../utils/firebaseAdmin'; // db should be from firebase-admin
 import { NextApiRequest, NextApiResponse } from 'next';
+import { Firestore } from 'firebase-admin/firestore';
 
 const PKPass = require('passkit-generator');
 
@@ -24,17 +24,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const cardRef = doc(db, 'cards', cardId as string);
-    const cardDoc = await getDoc(cardRef);
+    // ✅ Use Admin SDK's collection().doc().get()
+    const cardRef = db.collection('cards').doc(cardId as string);
+    const cardDoc = await cardRef.get();
 
-    if (!cardDoc.exists()) {
+    if (!cardDoc.exists) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
     const cardData = cardDoc.data();
 
     // Validate required fields
-    if (!cardData.firstName || !cardData.lastName || !cardData.title) {
+    if (!cardData?.firstName || !cardData?.lastName || !cardData?.title) {
       return res.status(400).json({ error: 'Missing required card fields' });
     }
 

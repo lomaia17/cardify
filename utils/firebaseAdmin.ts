@@ -1,20 +1,17 @@
-import * as admin from "firebase-admin";
+import { initializeApp, cert, getApps, getApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
-// Prevent re-initialization in hot-reload environments like Next.js
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: "r2-businesscard",
-      clientEmail: "firebase-adminsdk-fbsvc@r2-businesscard.iam.gserviceaccount.com",
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET, // e.g. r2-businesscard.appspot.com
-  });
-}
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
 
-// Export Admin SDK services
-const bucket = admin.storage().bucket();
-const dbAdmin = admin.firestore();
-const authAdmin = admin.auth();
+const adminApp = getApps().length === 0
+  ? initializeApp({
+      credential: cert(serviceAccount),
+      storageBucket: "r2-businesscard.appspot.com", // use correct bucket
+    })
+  : getApp();
 
-export { admin, bucket, dbAdmin, authAdmin };
+const adminDb = getFirestore(adminApp);
+const bucket = getStorage(adminApp).bucket();
+
+export { adminDb as db, bucket };
