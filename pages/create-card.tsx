@@ -99,6 +99,10 @@ import { NextSeo } from "next-seo";
 import slugify from "slugify";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+interface SocialLink {
+  platform: string;
+  url: string;
+}
 
 interface UserInfo {
   firstName: string;
