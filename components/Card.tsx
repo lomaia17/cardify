@@ -177,7 +177,6 @@ const Card = ({ cardData: propCardData }: CardProps) => {
             size={160}
             bgColor="#FFFFFF"
             fgColor="#000000"
-            level="H"
           />
         </div>
       )}
