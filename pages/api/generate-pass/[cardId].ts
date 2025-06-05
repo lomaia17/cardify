@@ -4,8 +4,8 @@ import { db, collection, query, where, getDocs } from '../../../utils/firebaseCo
 import { bucket } from '../../../utils/firebaseAdmin';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// Helper to load PEM files from Firebase Storage
-async function getPemBuffer(filename: string) {
+// Load certificate files from Firebase Storage
+async function getPemBuffer(filename: string): Promise<Buffer> {
   const file = bucket.file(`certificates/${filename}`);
   const [exists] = await file.exists();
   if (!exists) {
@@ -16,60 +16,45 @@ async function getPemBuffer(filename: string) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log('📥 Request received:', req.method, req.url);
-
-  if (req.method !== 'POST') {
-    console.warn('❌ Invalid method:', req.method);
+  if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const { cardId } = req.query;
+
   if (!cardId || Array.isArray(cardId)) {
-    console.warn('❌ Invalid or missing cardId:', cardId);
-    return res.status(400).json({ error: 'cardId is required and must be a string' });
+    return res.status(400).json({ error: 'Invalid cardId' });
   }
 
   try {
-    console.log(`🔍 Searching for card with slug: ${cardId}`);
+    // Query Firestore by slug
     const q = query(collection(db, 'cards'), where('slug', '==', cardId));
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      console.warn('❌ Card not found for slug:', cardId);
       return res.status(404).json({ error: 'Card not found' });
     }
 
-    const cardDoc = snapshot.docs[0];
-    const cardData = cardDoc.data();
+    const cardData = snapshot.docs[0].data();
 
-    console.log('✅ Card data retrieved:', cardData);
-
-    // Validate required fields explicitly
-    if (
-      typeof cardData.firstName !== 'string' ||
-      typeof cardData.lastName !== 'string' ||
-      typeof cardData.title !== 'string'
-    ) {
-      console.warn('❌ Missing required card fields');
+    if (!cardData.firstName || !cardData.lastName || !cardData.title) {
       return res.status(400).json({ error: 'Missing required card fields' });
     }
 
+    // Load template
     const templateName = cardData.template || 'businessCard.pass';
     const passModelPath = path.join(process.cwd(), 'passModels', templateName);
-    console.log('📁 Using pass model:', passModelPath);
 
-    // Load certificates from Firebase Storage
-    console.log('🔐 Loading certificates...');
+    // Load certificates
     const [signerCert, signerKey, wwdr] = await Promise.all([
       getPemBuffer('passwallet.pem'),
       getPemBuffer('pass-key.pem'),
       getPemBuffer('wwdr.pem'),
     ]);
 
-    // Use the environment variable or default passphrase
     const signerKeyPassphrase = process.env.CERT_PASSWORD || 'Ekakitia2002';
 
-    console.log('🛠️ Generating pass...');
+    // Generate pass
     const pass = await PKPass.from({
       model: passModelPath,
       certificates: {
@@ -80,25 +65,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    console.log('✨ Adding fields to pass...');
+    // Fill pass fields
     pass.primaryFields.push({
-      key: 'nameTitle',
+      key: 'name',
       label: 'Name / Title',
       value: `${cardData.firstName} ${cardData.lastName} / ${cardData.title}`,
     });
 
-    pass.secondaryFields.push(
-      {
-        key: 'company',
-        label: 'Company',
-        value: cardData.company || 'Not provided',
-      },
-      {
-        key: 'email',
-        label: 'Email',
-        value: cardData.email || 'Not provided',
-      }
-    );
+    pass.secondaryFields.push({
+      key: 'company',
+      label: 'Company',
+      value: cardData.company || 'Not provided',
+    });
 
     pass.auxiliaryFields.push({
       key: 'phone',
@@ -106,7 +84,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       value: cardData.phone || 'Not provided',
     });
 
-    if (cardData.linkedin && typeof cardData.linkedin === 'string') {
+    if (cardData.email) {
+      pass.auxiliaryFields.push({
+        key: 'email',
+        label: 'Email',
+        value: cardData.email,
+      });
+    }
+
+    if (cardData.linkedin) {
       pass.backFields.push({
         key: 'linkedin',
         label: 'LinkedIn',
@@ -121,16 +107,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       altText: 'Scan to view the business card',
     });
 
-    console.log('📦 Generating PKPass buffer...');
     const pkpassBuffer = await pass.getAsBuffer();
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', 'attachment; filename=businessCard.pkpass');
-
-    console.log('✅ Sending pass...');
-    return res.status(200).send(pkpassBuffer);
-  } catch (error) {
-    console.error('🔥 Error generating pass:', error);
-    return res.status(500).json({ error: 'Failed to generate pass', details: (error as Error).message });
+    res.status(200).send(pkpassBuffer);
+  } catch (error: any) {
+    console.error('Error generating pkpass:', error);
+    res.status(500).json({ error: 'Failed to generate pass', message: error.message });
   }
 }
