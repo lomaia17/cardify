@@ -9,7 +9,7 @@ import {
   PhoneIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
-import { QRCode } from 'react-qrcode-logo';
+import { QRCode } from "react-qrcode-logo";
 
 interface SocialLink {
   platform: string;
@@ -18,6 +18,8 @@ interface SocialLink {
 
 interface CardData {
   fullName?: string;
+  firstName?: string;
+  lastName?: string;
   name?: string;
   title?: string;
   email?: string;
@@ -48,6 +50,8 @@ const Card = ({ cardData: propCardData }: CardProps) => {
   const [loading, setLoading] = useState(!propCardData);
   const [error, setError] = useState<string | null>(null);
 
+  const isMobile = typeof window !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   useEffect(() => {
     const fetchCardData = async () => {
       if (propCardData || !slug) return;
@@ -55,7 +59,6 @@ const Card = ({ cardData: propCardData }: CardProps) => {
       try {
         const q = query(collection(db, "cards"), where("slug", "==", slug));
         const querySnapshot = await getDocs(q);
-
         if (!querySnapshot.empty) {
           setCardData(querySnapshot.docs[0].data() as CardData);
         } else {
@@ -72,9 +75,8 @@ const Card = ({ cardData: propCardData }: CardProps) => {
     fetchCardData();
   }, [slug, propCardData]);
 
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768;
-
   const handleAddToWallet = async () => {
+    if (!slug) return;
     try {
       const response = await fetch(`/api/generate-pass/${slug}`, {
         method: "POST",
@@ -83,13 +85,18 @@ const Card = ({ cardData: propCardData }: CardProps) => {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.style.display = "none";
-      a.href = url;
-      a.download = "businessCard.pkpass";
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
+
+      if (isMobile) {
+        window.location.href = url; // Open pass directly on mobile
+      } else {
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        a.download = "businessCard.pkpass";
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
     } catch (error) {
       console.error("Error downloading pass:", error);
     }
@@ -155,12 +162,7 @@ const Card = ({ cardData: propCardData }: CardProps) => {
               link.platform && link.url ? (
                 <div key={index} className="flex items-center space-x-2">
                   <span className={`text-sm ${style.iconColor}`}>{link.platform}:</span>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`underline break-all ${style.textColor}`}
-                  >
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className={`underline break-all ${style.textColor}`}>
                     {link.url}
                   </a>
                 </div>
@@ -170,7 +172,7 @@ const Card = ({ cardData: propCardData }: CardProps) => {
         )}
       </div>
 
-      {isDesktop && slug && (
+      {!isMobile && slug && (
         <div className="flex justify-center mt-6">
           <QRCode
             value={`${process.env.NEXT_PUBLIC_BASE_URL}/api/generate-pass/${slug}`}
