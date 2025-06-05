@@ -8,10 +8,13 @@ const PKPass = require('passkit-generator');
 
 async function getPemBuffer(filename: string): Promise<Buffer> {
   const file = bucket.file(`certificates/${filename}`);
+  const [exists] = await file.exists();
+  if (!exists) {
+    throw new Error(`File not found in Firebase Storage: certificates/${filename}`);
+  }
   const [contents] = await file.download();
   return contents;
 }
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
