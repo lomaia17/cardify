@@ -63,9 +63,8 @@ const colorOptions = [
       textColor: "text-gray-900",
       iconColor: "text-gray-800",
     },
-  }
+  },
 ];
-
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/router";
@@ -108,7 +107,7 @@ interface UserInfo {
   title: string;
   company: string;
   phone: string;
-  linkedin?: string;
+  socialLinks: SocialLink[];
   profileImage?: string;
 }
 
@@ -123,7 +122,7 @@ const CreateCard = () => {
     title: "",
     company: "",
     phone: "",
-    linkedin: "",
+    socialLinks: [{ platform: "", url: "" }],
     profileImage: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,6 +134,8 @@ const CreateCard = () => {
     iconColor: colorOptions[0].value.iconColor,
   });
   const storage = getStorage();
+  const inputClasses =
+    "w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent";
 
   // Update user info on authentication
   useEffect(() => {
@@ -183,37 +184,100 @@ const CreateCard = () => {
 
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
 
+    console.log("Selected file:", file);
+
+    // Preview the image locally
     const imageUrl = URL.createObjectURL(file);
     setImagePreview(imageUrl);
 
-    const storageRef = ref(storage, `profileImages/${user?.uid}/${file.name}`);
+    // Make sure user and user.uid exist
+    if (!user?.uid) {
+      console.error("User ID is missing!");
+      toast.error("User not authenticated.");
+      return;
+    }
+
+    const filePath = `profileImages/${user.uid}/${file.name}`;
+    console.log("Uploading file to path:", filePath);
+
+    const storageRef = ref(storage, filePath);
+
     try {
       const uploadTask = uploadBytesResumable(storageRef, file);
+
       uploadTask.on(
         "state_changed",
         (snapshot) => {
           const progress =
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`);
+          console.log(`Upload is ${progress.toFixed(2)}% done`);
+
+          switch (snapshot.state) {
+            case "paused":
+              console.log("Upload is paused");
+              break;
+            case "running":
+              console.log("Upload is running");
+              break;
+          }
         },
         (error) => {
-          console.error("Error uploading image", error);
+          console.error("Error uploading image:", error);
           toast.error("Image upload failed.");
         },
         async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          setUserInfo((prev) => ({
-            ...prev,
-            profileImage: downloadURL,
-          }));
-          toast.success("Profile image uploaded!");
+          try {
+            console.log("Upload completed!");
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            console.log("Download URL:", downloadURL);
+
+            setUserInfo((prev) => ({
+              ...prev,
+              profileImage: downloadURL,
+            }));
+
+            toast.success("Profile image uploaded!");
+          } catch (urlError) {
+            console.error("Failed to get download URL:", urlError);
+            toast.error("Failed to retrieve image URL.");
+          }
         }
       );
     } catch (error) {
-      console.error("Error uploading file: ", error);
+      console.error("Error starting upload:", error);
+      toast.error("Failed to start image upload.");
     }
+  };
+
+  const handleSocialLinkChange = (
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    const updatedLinks = [...userInfo.socialLinks];
+    updatedLinks[index] = {
+      ...updatedLinks[index],
+      [field]: value,
+    };
+    setUserInfo({ ...userInfo, socialLinks: updatedLinks });
+  };
+
+  const addSocialLink = () => {
+    setUserInfo((prev) => ({
+      ...prev,
+      socialLinks: [...prev.socialLinks, { platform: "", url: "" }],
+    }));
+  };
+
+  const removeSocialLink = (index: number) => {
+    const updatedLinks = [...userInfo.socialLinks];
+    updatedLinks.splice(index, 1);
+    setUserInfo({ ...userInfo, socialLinks: updatedLinks });
   };
 
   const handleColorChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -238,28 +302,29 @@ const CreateCard = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-  
+
     if (!validateForm()) {
       setIsSubmitting(false);
       return;
     }
-  
+
     try {
       let baseSlug = slugify(`${userInfo.firstName}-${userInfo.lastName}`, {
         lower: true,
       });
       let slug = baseSlug;
       let counter = 1;
-  
+
       // Check if the slug already exists in Firestore
       const cardsCollectionRef = collection(db, "cards");
       let slugExists = true;
-  
+
       while (slugExists) {
-        const querySnapshot = await import("firebase/firestore").then(({ query, where, getDocs }) =>
-          getDocs(query(cardsCollectionRef, where("slug", "==", slug)))
+        const querySnapshot = await import("firebase/firestore").then(
+          ({ query, where, getDocs }) =>
+            getDocs(query(cardsCollectionRef, where("slug", "==", slug)))
         );
-  
+
         if (querySnapshot.empty) {
           slugExists = false;
         } else {
@@ -267,7 +332,7 @@ const CreateCard = () => {
           counter++;
         }
       }
-  
+
       const docRef = await addDoc(cardsCollectionRef, {
         ...userInfo,
         cardStyles, // saving selected styles along with card data
@@ -275,7 +340,7 @@ const CreateCard = () => {
         slug,
         createdAt: new Date(),
       });
-  
+
       toast.success("Card created successfully!");
       router.push(`/card/${slug}`);
     } catch (error) {
@@ -302,7 +367,8 @@ const CreateCard = () => {
         openGraph={{
           url: "https://yourwebsite.com",
           title: "Digital Business Card Generator",
-          description: "Create your personalized digital business card in seconds.",
+          description:
+            "Create your personalized digital business card in seconds.",
           images: [
             {
               url: "../ogimage.png",
@@ -334,11 +400,6 @@ const CreateCard = () => {
               { name: "title", placeholder: "Title", icon: BriefcaseIcon },
               { name: "company", placeholder: "Company", icon: Building2Icon },
               { name: "phone", placeholder: "Phone", icon: PhoneIcon },
-              {
-                name: "linkedin",
-                placeholder: "LinkedIn URL",
-                icon: LinkedinIcon,
-              },
             ].map(({ name, placeholder, icon: Icon }) => (
               <div className="relative" key={name}>
                 <input
@@ -352,10 +413,53 @@ const CreateCard = () => {
                 <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               </div>
             ))}
-
+            <div className="space-y-4">
+              <label className="block text-sm font-medium">Social Links</label>
+              {userInfo.socialLinks.map((link, index) => (
+                <div key={index} className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    name={`platform-${index}`}
+                    placeholder="Platform (e.g., LinkedIn)"
+                    value={link.platform}
+                    onChange={(e) =>
+                      handleSocialLinkChange(index, "platform", e.target.value)
+                    }
+                    className={inputClasses}
+                  />
+                  <input
+                    type="url"
+                    name={`url-${index}`}
+                    placeholder="URL"
+                    value={link.url}
+                    onChange={(e) =>
+                      handleSocialLinkChange(index, "url", e.target.value)
+                    }
+                    className={inputClasses}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSocialLink(index)}
+                    className="text-red-500 hover:text-red-700 font-semibold"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addSocialLink}
+                className="text-blue-600 underline"
+              >
+                + Add Another
+              </button>
+            </div>
             {/* Color Options Dropdown */}
             <div className="space-y-2">
-              <label htmlFor="colorOptions" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="colorOptions"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Choose Card Color Option
               </label>
               <select
@@ -375,7 +479,7 @@ const CreateCard = () => {
             <div className="relative">
               <label htmlFor="file-upload" className="block text-sm mb-2">
                 {imagePreview ? (
-                  <div className="w-full h-32 bg-gray-200 rounded-xl overflow-hidden">
+                  <div className="w-full aspect-[3/2] bg-gray-200 rounded-xl overflow-hidden">
                     <img
                       src={imagePreview}
                       alt="Profile preview"
@@ -383,7 +487,7 @@ const CreateCard = () => {
                     />
                   </div>
                 ) : (
-                  <div className="w-full h-32 bg-gray-200 rounded-xl flex items-center justify-center">
+                  <div className="w-full aspect-[3/2] bg-gray-200 rounded-xl flex items-center justify-center">
                     <span className="text-gray-500">Upload Profile Image</span>
                   </div>
                 )}
@@ -403,7 +507,7 @@ const CreateCard = () => {
               disabled={isSubmitting}
               className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
             >
-              {isSubmitting ? "🚀 Generating Card..." : "🚀 Generate Card"}
+              {isSubmitting ? "🚀 Saving Card..." : "🚀 Save Card"}
             </button>
           </form>
 
@@ -413,28 +517,39 @@ const CreateCard = () => {
               className={`p-6 rounded-3xl shadow-2xl max-w-md mx-auto ${cardStyles.backgroundColor}`}
             >
               <div className="flex flex-col items-center space-y-4">
-                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden">
                   {imagePreview ? (
                     <img
                       src={imagePreview}
-                      alt="User"
+                      alt="User Avatar"
                       className="w-24 h-24 object-cover rounded-full shadow-lg"
                     />
                   ) : (
-                    <div className={`${cardStyles.backgroundColor} flex items-center justify-center w-full h-full`}>
+                    <div
+                      className={`${cardStyles.backgroundColor} flex items-center justify-center w-full h-full`}
+                    >
                       {userInfo.firstName ? userInfo.firstName[0] : "?"}
                     </div>
                   )}
                 </div>
-                <h2 className={`text-2xl font-bold text-center ${cardStyles.textColor}`}>
+                <h2
+                  className={`text-2xl font-bold text-center ${cardStyles.textColor}`}
+                >
                   {userInfo.firstName} {userInfo.lastName}
                 </h2>
-                <p className="text-indigo-600 font-medium">{userInfo.title}</p>
+                <p className={`${cardStyles.textColor} font-medium`}>
+                  {userInfo.title}
+                </p>
               </div>
+
               <div className="mt-6 space-y-3 text-sm">
                 <div className="flex items-center space-x-2">
-                  <Building2Icon className={`w-5 h-5 ${cardStyles.iconColor}`} />
-                  <span className={cardStyles.textColor}>{userInfo.company}</span>
+                  <Building2Icon
+                    className={`w-5 h-5 ${cardStyles.iconColor}`}
+                  />
+                  <span className={cardStyles.textColor}>
+                    {userInfo.company}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <PhoneIcon className={`w-5 h-5 ${cardStyles.iconColor}`} />
@@ -446,7 +561,9 @@ const CreateCard = () => {
                 </div>
                 {userInfo.linkedin && (
                   <div className="flex items-center space-x-2">
-                    <LinkedinIcon className={`w-5 h-5 ${cardStyles.iconColor}`} />
+                    <LinkedinIcon
+                      className={`w-5 h-5 ${cardStyles.iconColor}`}
+                    />
                     <a
                       href={userInfo.linkedin}
                       target="_blank"
@@ -458,6 +575,34 @@ const CreateCard = () => {
                   </div>
                 )}
               </div>
+
+              {/* Social Links */}
+              {userInfo.socialLinks?.length > 0 && (
+                <div className="mt-4 space-y-2 text-sm">
+                  {userInfo.socialLinks.map(
+                    (link, index) =>
+                      link.platform &&
+                      link.url && (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2"
+                        >
+                          <span className={`text-sm ${cardStyles.iconColor}`}>
+                            {link.platform}:
+                          </span>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`underline ${cardStyles.textColor}`}
+                          >
+                            {link.url}
+                          </a>
+                        </div>
+                      )
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,17 +1,21 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { db } from "../utils/firebaseConfig"; // adjust path as needed
+import { db } from "../utils/firebaseConfig";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import {
   EnvelopeIcon,
   BriefcaseIcon,
   BuildingOfficeIcon,
   PhoneIcon,
-  LinkIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
+import { QRCode } from 'react-qrcode-logo';
 
-// Define the type for card data
+interface SocialLink {
+  platform: string;
+  url: string;
+}
+
 interface CardData {
   fullName?: string;
   name?: string;
@@ -22,76 +26,60 @@ interface CardData {
   linkedin?: string;
   slug?: string;
   cardStyles?: CardStyles;
+  profileImage?: string;
+  socialLinks?: SocialLink[];
 }
+
 interface CardStyles {
   backgroundColor: string;
   textColor: string;
   iconColor: string;
 }
 
-// Define CardProps interface
 interface CardProps {
-  cardData?: CardData | null; // Make cardData optional for parent to pass down
+  cardData?: CardData | null;
 }
 
-const Card = ({ cardData }: CardProps) => {
+const Card = ({ cardData: propCardData }: CardProps) => {
   const router = useRouter();
-  const { slug } = router.query; // Get the slug from the URL
+  const { slug } = router.query;
 
-  // If no cardData is passed as prop, fetch the data using the slug in the URL
-  if (!cardData && slug) {
-    const [fetchedCardData, setFetchedCardData] = useState<CardData | null>(
-      null
-    );
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const [cardData, setCardData] = useState<CardData | null>(propCardData || null);
+  const [loading, setLoading] = useState(!propCardData);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-      const fetchCardData = async () => {
-        if (!slug) {
-          setError("No slug found in the URL.");
-          setLoading(false);
-          return;
+  useEffect(() => {
+    const fetchCardData = async () => {
+      if (propCardData || !slug) return;
+      setLoading(true);
+      try {
+        const q = query(collection(db, "cards"), where("slug", "==", slug));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          setCardData(querySnapshot.docs[0].data() as CardData);
+        } else {
+          setError("No card found with that slug.");
         }
+      } catch (err) {
+        setError("Error fetching card data.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        try {
-          const q = query(collection(db, "cards"), where("slug", "==", slug)); // Query by slug
-          const querySnapshot = await getDocs(q);
+    fetchCardData();
+  }, [slug, propCardData]);
 
-          if (!querySnapshot.empty) {
-            setFetchedCardData(querySnapshot.docs[0].data() as CardData);
-          } else {
-            setError("No card found with that slug.");
-          }
-        } catch (err) {
-          setError("Error fetching card data.");
-          console.error("Error fetching card data:", err);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchCardData();
-    }, [slug]); // Re-run effect if slug changes
-
-    // Loading and error handling for fetching data
-    if (loading) return <div className="text-center mt-10">Loading...</div>;
-    if (error)
-      return <div className="text-center mt-10 text-red-500">{error}</div>;
-
-    // Use fetched data if cardData is not passed in
-    cardData = fetchedCardData;
-  }
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768;
 
   const handleAddToWallet = async () => {
     try {
       const response = await fetch(`/api/generate-pass/${slug}`, {
         method: "POST",
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch pass");
-      }
+      if (!response.ok) throw new Error("Failed to fetch pass");
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -107,28 +95,32 @@ const Card = ({ cardData }: CardProps) => {
     }
   };
 
-  // If no cardData is available, return null
+  if (loading) return <div className="text-center mt-10">Loading...</div>;
+  if (error) return <div className="text-center mt-10 text-red-500">{error}</div>;
   if (!cardData) return null;
-  console.log(cardData);
+
   const style = cardData.cardStyles || {
     backgroundColor: "bg-white/80",
     textColor: "text-gray-800",
     iconColor: "text-indigo-500",
   };
+
   return (
-    <div
-      className={`${style.backgroundColor} backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl p-8 w-full space-y-6 transition duration-300 hover:shadow-lg`}
-    >
+    <div className={`${style.backgroundColor} backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl p-8 w-full space-y-6`}>
       <div className="text-center">
-        <div
-          className={`w-24 h-24 mx-auto rounded-full ${style.backgroundColor} flex items-center justify-center text-white text-3xl font-bold shadow-lg`}
-        >
-          {cardData.fullName ? cardData.fullName[0] : "?"}
+        <div className="w-24 h-24 mx-auto rounded-full overflow-hidden shadow-lg">
+          {cardData.profileImage ? (
+            <img src={cardData.profileImage} alt={cardData.fullName || "Profile"} className="w-full h-full object-cover" />
+          ) : (
+            <div className={`w-full h-full flex items-center justify-center ${style.backgroundColor} text-white text-3xl font-bold`}>
+              {cardData.fullName?.[0] || "?"}
+            </div>
+          )}
         </div>
         <h2 className={`mt-4 text-2xl font-bold ${style.textColor}`}>
           {cardData.fullName || cardData.name || "No Name Available"}
         </h2>
-        <p className="text-sm text-gray-500">
+        <p className={`text-sm text-gray-500 ${style.textColor}`}>
           {cardData.title || "No Title Available"}
         </p>
       </div>
@@ -156,18 +148,39 @@ const Card = ({ cardData }: CardProps) => {
           <BuildingOfficeIcon className={`h-5 w-5 mr-3 ${style.iconColor}`} />
           <span>Business</span>
         </div>
-        {cardData.linkedin && (
-          <a
-            href={cardData.linkedin}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center text-indigo-600 hover:text-indigo-800 transition duration-300 ease-in-out transform hover:scale-101"
-          >
-            <LinkIcon className="w-5 h-5 mr-2" />
-            <span>View LinkedIn Profile</span>
-          </a>
+
+        {Array.isArray(cardData.socialLinks) && cardData.socialLinks.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {cardData.socialLinks.map((link, index) =>
+              link.platform && link.url ? (
+                <div key={index} className="flex items-center space-x-2">
+                  <span className={`text-sm ${style.iconColor}`}>{link.platform}:</span>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`underline break-all ${style.textColor}`}
+                  >
+                    {link.url}
+                  </a>
+                </div>
+              ) : null
+            )}
+          </div>
         )}
       </div>
+
+      {isDesktop && slug && (
+        <div className="flex justify-center mt-6">
+          <QRCode
+            value={`${process.env.NEXT_PUBLIC_BASE_URL}/api/generate-pass/${slug}`}
+            size={160}
+            bgColor="#FFFFFF"
+            fgColor="#000000"
+            level="H"
+          />
+        </div>
+      )}
 
       <button
         onClick={handleAddToWallet}

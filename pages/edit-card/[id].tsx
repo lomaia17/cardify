@@ -8,8 +8,8 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
-import { db, auth } from "../../utils/firebaseConfig"; // Firebase configuration
-import { onAuthStateChanged, User } from "firebase/auth"; // Firebase authentication imports
+import { db, auth } from "../../utils/firebaseConfig";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { ClipLoader } from "react-spinners";
 import { NextSeo } from "next-seo";
 import Header from "../../components/DashboardHeader";
@@ -23,6 +23,7 @@ import {
   Link,
 } from "lucide-react";
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
+
 const colorOptions = [
   {
     label: "Neutral Light",
@@ -90,6 +91,11 @@ const colorOptions = [
   },
 ];
 
+interface SocialLink {
+  platform: string;
+  url: string;
+}
+
 interface FormData {
   firstName: string;
   lastName: string;
@@ -104,6 +110,8 @@ interface FormData {
     textColor: string;
     iconColor: string;
   };
+  socialLinks: SocialLink[];
+  profileImage?: string;
 }
 
 const EditCard = () => {
@@ -120,17 +128,22 @@ const EditCard = () => {
     linkedin: "",
     slug: "",
     cardStyles: colorOptions[0].value,
+    socialLinks: [{ platform: "", url: "" }],
   });
 
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [slugError, setSlugError] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const inputClasses =
+    "w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
-        router.push("/"); // Redirect to home if user is not authenticated
+        router.push("/");
       } else {
         setUser(firebaseUser);
       }
@@ -157,11 +170,21 @@ const EditCard = () => {
 
           if (cardEmail !== loggedInEmail) {
             alert("You are not authorized to edit this card.");
-            router.push("/"); // Redirect if not authorized
+            router.push("/");
             return;
           }
 
-          setFormData(cardData as FormData);
+          // Initialize socialLinks if it doesn't exist
+          const socialLinks = cardData.socialLinks || [{ platform: "", url: "" }];
+          
+          setFormData({
+            ...cardData,
+            socialLinks,
+          } as FormData);
+
+          if (cardData.profileImage) {
+            setImagePreview(cardData.profileImage);
+          }
         } else {
           alert("Card not found.");
           router.push("/");
@@ -180,11 +203,53 @@ const EditCard = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleSocialLinkChange = (
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    const updatedLinks = [...formData.socialLinks];
+    updatedLinks[index] = {
+      ...updatedLinks[index],
+      [field]: value,
+    };
+    setFormData({ ...formData, socialLinks: updatedLinks });
+  };
+
+  const addSocialLink = () => {
+    setFormData((prev) => ({
+      ...prev,
+      socialLinks: [...prev.socialLinks, { platform: "", url: "" }],
+    }));
+  };
+
+  const removeSocialLink = (index: number) => {
+    const updatedLinks = [...formData.socialLinks];
+    updatedLinks.splice(index, 1);
+    setFormData({ ...formData, socialLinks: updatedLinks });
+  };
+
   const handleColorChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const selected = colorOptions.find((opt) => opt.label === e.target.value);
     if (selected) {
       setFormData({ ...formData, cardStyles: selected.value });
     }
+  };
+
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
+
+    // Preview the image locally
+    const imageUrl = URL.createObjectURL(file);
+    setImagePreview(imageUrl);
+
+    // You would typically upload the image to storage here
+    // and update the formData.profileImage with the download URL
+    // Similar to the implementation in CreateCard
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -224,7 +289,7 @@ const EditCard = () => {
         setUpdating(false);
         return;
       } else {
-        setSlugError(""); // Clear any previous error
+        setSlugError("");
       }
 
       const docRef = doc(db, "cards", currentDocId);
@@ -255,13 +320,12 @@ const EditCard = () => {
     <>
       <NextSeo
         title="Edit Card"
-        description="Create your personalized digital business card in seconds."
+        description="Edit your personalized digital business card."
         canonical="https://yourwebsite.com"
         openGraph={{
           url: "https://yourwebsite.com",
-          title: "Digital Business Card Generator",
-          description:
-            "Create your personalized digital business card in seconds.",
+          title: "Edit Digital Business Card",
+          description: "Edit your personalized digital business card.",
           images: [
             {
               url: "../../ogimage.png",
@@ -275,159 +339,250 @@ const EditCard = () => {
         <div className="p-6">
           <Header firstName={formData.firstName || ""} />
         </div>
-        <div className="min-h-screen flex items-start justify-center py-12 px-4">
-          <div className="w-full max-w-2xl bg-white/30 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl">
-            <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
+        <div className="min-h-screen flex flex-col md:flex-row items-start justify-center px-4 gap-10">
+          {/* FORM */}
+          <form
+            onSubmit={handleSubmit}
+            className="w-full md:w-1/2 bg-white/30 backdrop-blur-xl shadow-2xl border border-white/20 rounded-3xl p-10 space-y-6"
+          >
+            <h2 className="text-3xl font-bold text-gray-800 text-center tracking-tight">
               🛠️ Edit Your Business Card
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {[
-                {
-                  name: "firstName",
-                  placeholder: "First Name",
-                  icon: UserIcon,
-                },
-                {
-                  name: "lastName",
-                  placeholder: "Last Name",
-                  icon: UserIcon,
-                },
-                {
-                  name: "email",
-                  placeholder: "Email",
-                  icon: MailIcon,
-                },
-                {
-                  name: "title",
-                  placeholder: "Title",
-                  icon: BriefcaseIcon,
-                },
-                {
-                  name: "company",
-                  placeholder: "Company",
-                  icon: Building2Icon,
-                },
-                {
-                  name: "phone",
-                  placeholder: "Phone",
-                  icon: PhoneIcon,
-                },
-                {
-                  name: "linkedin",
-                  placeholder: "LinkedIn URL",
-                  icon: LinkedinIcon,
-                },
-              ].map(({ name, placeholder, icon: Icon }) => (
-                <div className="relative" key={name}>
+
+            {[
+              { name: "firstName", placeholder: "First Name", icon: UserIcon },
+              { name: "lastName", placeholder: "Last Name", icon: UserIcon },
+              { name: "email", placeholder: "Email", icon: MailIcon },
+              { name: "title", placeholder: "Title", icon: BriefcaseIcon },
+              { name: "company", placeholder: "Company", icon: Building2Icon },
+              { name: "phone", placeholder: "Phone", icon: PhoneIcon },
+            ].map(({ name, placeholder, icon: Icon }) => (
+              <div className="relative" key={name}>
+                <input
+                  type={name === "email" ? "email" : "text"}
+                  name={name}
+                  placeholder={placeholder}
+                  value={(formData as any)[name]}
+                  onChange={handleChange}
+                  className={inputClasses}
+                />
+                <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              </div>
+            ))}
+
+            {/* Social Links Section */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium">Social Links</label>
+              {formData.socialLinks.map((link, index) => (
+                <div key={index} className="flex gap-2 mb-4">
                   <input
-                    type={name === "email" ? "email" : "text"}
-                    name={name}
-                    placeholder={placeholder}
-                    value={(formData as any)[name]}
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    type="text"
+                    placeholder="Platform (e.g., LinkedIn)"
+                    value={link.platform}
+                    onChange={(e) =>
+                      handleSocialLinkChange(index, "platform", e.target.value)
+                    }
+                    className={inputClasses}
                   />
-                  <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="url"
+                    placeholder="URL"
+                    value={link.url}
+                    onChange={(e) =>
+                      handleSocialLinkChange(index, "url", e.target.value)
+                    }
+                    className={inputClasses}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSocialLink(index)}
+                    className="text-red-500 hover:text-red-700 font-semibold"
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
-              {[{ name: "slug", placeholder: "Change Slug", icon: Link }].map(
-                ({ name, placeholder, icon: Icon }) => (
-                  <div className="relative" key={name}>
-                    <input
-                      type="text"
-                      name={name}
-                      placeholder={placeholder}
-                      value={(formData as any)[name]}
-                      onChange={handleChange}
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                    />
-                    <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    {slugError && (
-                      <p className="text-sm text-red-600 mt-2">{slugError}</p>
-                    )}
-                  </div>
-                )
-              )}
-
-<div>
-  <label htmlFor="colorTheme" className="block mb-2 font-medium text-gray-700">
-    Select Card Theme
-  </label>
-  <select
-    id="colorTheme"
-    onChange={handleColorChange}
-    className="w-full p-3 rounded-xl border border-gray-300 bg-white/70 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
-    value={
-      colorOptions.find((opt) =>
-        JSON.stringify(opt.value) === JSON.stringify(formData.cardStyles)
-      )?.label || ""
-    }
-  >
-    <option value="">Select a theme</option>
-    {colorOptions.map((option) => (
-      <option key={option.label} value={option.label}>
-        {option.label}
-      </option>
-    ))}
-  </select>
-</div>
-
               <button
-                type="submit"
-                disabled={updating}
-                className={`w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition duration-300 ${
-                  updating ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                type="button"
+                onClick={addSocialLink}
+                className="text-blue-600 underline"
               >
-                {updating ? "Updating..." : "Save Changes"}
+                + Add Another
               </button>
-            </form>
-          </div>
-                        {/* PREVIEW CARD */}
-  <div className="md:block w-full md:w-1/2 p-6">
-    <div
-      className={`p-6 rounded-3xl shadow-2xl max-w-md mx-auto ${formData.cardStyles.backgroundColor}`}
-    >
-      <div className="flex flex-col items-center space-y-4">
-        <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden">
-            <div className={`${formData.cardStyles.backgroundColor} flex items-center justify-center w-full h-full`}>
-              {formData.firstName ? formData.firstName[0] : "?"}
             </div>
-        </div>
-        <h2 className={`text-2xl font-bold text-center ${formData.cardStyles.textColor}`}>
-          {formData.firstName} {formData.lastName}
-        </h2>
-        <p className="text-indigo-600 font-medium">{formData.title}</p>
-      </div>
-      <div className="mt-6 space-y-3 text-sm">
-        <div className="flex items-center space-x-2">
-          <Building2Icon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
-          <span className={formData.cardStyles.textColor}>{formData.company}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <PhoneIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
-          <span className={formData.cardStyles.textColor}>{formData.phone}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <EnvelopeIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
-          <span className={formData.cardStyles.textColor}>{formData.email}</span>
-        </div>
-        {formData.linkedin && (
-          <div className="flex items-center space-x-2">
-            <LinkedinIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
-            <a
-              href={formData.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
+
+            {/* Slug Input */}
+            <div className="relative">
+              <input
+                type="text"
+                name="slug"
+                placeholder="Change Slug"
+                value={formData.slug}
+                onChange={handleChange}
+                className={inputClasses}
+              />
+              <Link className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              {slugError && (
+                <p className="text-sm text-red-600 mt-2">{slugError}</p>
+              )}
+            </div>
+
+            {/* Color Options Dropdown */}
+            <div className="space-y-2">
+              <label
+                htmlFor="colorOptions"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Choose Card Color Option
+              </label>
+              <select
+                id="colorOptions"
+                onChange={handleColorChange}
+                className="w-full border border-gray-300 rounded-xl py-2 px-3 bg-white/70 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                value={
+                  colorOptions.find((opt) =>
+                    JSON.stringify(opt.value) === JSON.stringify(formData.cardStyles)
+                  )?.label || ""
+                }
+              >
+                {colorOptions.map((option) => (
+                  <option key={option.label} value={option.label}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Image Upload */}
+            <div className="relative">
+              <label htmlFor="file-upload" className="block text-sm mb-2">
+                {imagePreview ? (
+                  <div className="w-full aspect-[3/2] bg-gray-200 rounded-xl overflow-hidden">
+                    <img
+                      src={imagePreview}
+                      alt="Profile preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full aspect-[3/2] bg-gray-200 rounded-xl flex items-center justify-center">
+                    <span className="text-gray-500">Upload Profile Image</span>
+                  </div>
+                )}
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                name="profileImage"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={updating}
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 cursor-pointer"
             >
-              LinkedIn Profile
-            </a>
+              {updating ? "🚀 Updating Card..." : "🚀 Update Card"}
+            </button>
+          </form>
+
+          {/* PREVIEW CARD */}
+          <div className="md:block w-full md:w-1/2 p-6">
+            <div
+              className={`p-6 rounded-3xl shadow-2xl max-w-md mx-auto ${formData.cardStyles.backgroundColor}`}
+            >
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg overflow-hidden">
+                  {imagePreview ? (
+                    <img
+                      src={imagePreview}
+                      alt="User Avatar"
+                      className="w-24 h-24 object-cover rounded-full shadow-lg"
+                    />
+                  ) : (
+                    <div
+                      className={`${formData.cardStyles.backgroundColor} flex items-center justify-center w-full h-full`}
+                    >
+                      {formData.firstName ? formData.firstName[0] : "?"}
+                    </div>
+                  )}
+                </div>
+                <h2
+                  className={`text-2xl font-bold text-center ${formData.cardStyles.textColor}`}
+                >
+                  {formData.firstName} {formData.lastName}
+                </h2>
+                <p className={`${formData.cardStyles.textColor} font-medium`}>
+                  {formData.title}
+                </p>
+              </div>
+
+              <div className="mt-6 space-y-3 text-sm">
+                <div className="flex items-center space-x-2">
+                  <Building2Icon
+                    className={`w-5 h-5 ${formData.cardStyles.iconColor}`}
+                  />
+                  <span className={formData.cardStyles.textColor}>
+                    {formData.company}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <PhoneIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
+                  <span className={formData.cardStyles.textColor}>{formData.phone}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <EnvelopeIcon className={`w-5 h-5 ${formData.cardStyles.iconColor}`} />
+                  <span className={formData.cardStyles.textColor}>{formData.email}</span>
+                </div>
+                {formData.linkedin && (
+                  <div className="flex items-center space-x-2">
+                    <LinkedinIcon
+                      className={`w-5 h-5 ${formData.cardStyles.iconColor}`}
+                    />
+                    <a
+                      href={formData.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      LinkedIn Profile
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Social Links Preview */}
+              {formData.socialLinks?.length > 0 && (
+                <div className="mt-4 space-y-2 text-sm">
+                  {formData.socialLinks.map(
+                    (link, index) =>
+                      link.platform &&
+                      link.url && (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2"
+                        >
+                          <span className={`text-sm ${formData.cardStyles.iconColor}`}>
+                            {link.platform}:
+                          </span>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`underline ${formData.cardStyles.textColor}`}
+                          >
+                            {link.url}
+                          </a>
+                        </div>
+                      )
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </div>
-  </div>
         </div>
       </div>
     </>

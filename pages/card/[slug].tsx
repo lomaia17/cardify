@@ -95,7 +95,12 @@ const CardPage = () => {
               </div></>}
       <div className="flex items-center justify-center py-16 px-4">
         <div className="w-full max-w-3xl">
-          <Card cardData={finalCardData} />
+          <Card cardData={finalCardData} /> {
+          session && (
+          <p className="text-sm text-gray-700 mt-6 text-center">
+            This URL is public and will be available for anyone, feel free to share.
+          </p>
+        )}
         </div>
       </div>
     </div>

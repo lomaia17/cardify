@@ -1,62 +1,61 @@
-import fs from 'fs';
 import path from 'path';
 import { PKPass } from 'passkit-generator';
 import { db, collection, query, where, getDocs } from '../../../utils/firebaseConfig';
+import { bucket } from '../../../utils/firebaseAdmin';
 import { NextApiRequest, NextApiResponse } from 'next';
+
+// Helper to load PEM files from Firebase Storage
+async function getPemBuffer(filename: string): Promise<Buffer> {
+  const file = bucket.file(`certificates/${filename}`);
+  const [contents] = await file.download();
+  return contents;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Request received:', req.method);
 
-  // Ensure the request is a POST request
   if (req.method !== 'POST') {
-    console.log('Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // Access the slug (cardId) from the dynamic route parameter
-  const { cardId } = req.query;  // Get the cardId (slug) from the dynamic route
-  console.log('Received cardId:', cardId);
-
+  const { cardId } = req.query;
   if (!cardId || Array.isArray(cardId)) {
-    console.log('Missing cardId in request or cardId is an array');
-    return res.status(400).json({ error: 'cardId is required' });
+    return res.status(400).json({ error: 'cardId is required and must be a string' });
   }
 
   try {
-    // Fetch Firestore data using the cardId (slug)
-    console.log('Querying Firestore for card with cardId:', cardId);
-    const q = query(collection(db, "cards"), where("slug", "==", cardId));  // Query by slug
-    const querySnapshot = await getDocs(q);
+    // Get card from Firestore
+    const q = query(collection(db, "cards"), where("slug", "==", cardId));
+    const snapshot = await getDocs(q);
 
-    // Check if the card was found
-    if (querySnapshot.empty) {
-      console.error('Card not found for cardId:', cardId);
+    if (snapshot.empty) {
       return res.status(404).json({ error: 'Card not found' });
     }
 
-    const cardData = querySnapshot.docs[0].data();
-    console.log('Fetched card data:', cardData);
+    const cardData = snapshot.docs[0].data();
 
-    // Paths for certificates and model
-    const certsPath = path.join(process.cwd(), 'certs');
-    const passModelPath = path.join(process.cwd(), 'passModels', 'businessCard.pass');
-    console.log('Certificate paths:', certsPath);
+    if (!cardData.firstName || !cardData.lastName || !cardData.title) {
+      return res.status(400).json({ error: 'Missing required card fields' });
+    }
 
-    // Initialize pass from the pass template and certificates
-    console.log('Initializing PKPass...');
+    const templateName = cardData.template || 'businessCard.pass';
+    const passModelPath = path.join(process.cwd(), 'passModels', templateName);
+
+    // Load certificates from Firebase Storage
+    const signerCert = await getPemBuffer('passwallet.pem');
+    const signerKey = await getPemBuffer('pass-key.pem');
+    const wwdr = await getPemBuffer('wwdr.pem');
+
     const pass = await PKPass.from({
       model: passModelPath,
       certificates: {
-        signerCert: fs.readFileSync(path.join(certsPath, 'passwallet.pem')),
-        signerKey: fs.readFileSync(path.join(certsPath, 'pass-key.pem')),
-        wwdr: fs.readFileSync(path.join(certsPath, 'wwdr.pem')),
+        signerCert,
+        signerKey,
+        wwdr,
         signerKeyPassphrase: process.env.CERT_PASSWORD || 'Ekakitia2002',
       },
     });
-    console.log('PKPass initialized successfully');
 
-    // === FIELDS ===
-    console.log('Adding fields to pass...');
     pass.primaryFields.push({
       key: 'nameTitle',
       label: 'Name / Title',
@@ -94,24 +93,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: `https://yourdomain.com/card/${cardId}`,
       format: "PKBarcodeFormatQR",
       messageEncoding: "iso-8859-1",
-      altText: "Scan to view the business card"
+      altText: "Scan to view the business card",
     });
-    console.log('Fields and barcode added to pass');
 
-    // === GENERATE PASS ===
-    console.log('Generating .pkpass file...');
     const pkpassBuffer = await pass.getAsBuffer();
-    console.log('Pass generated successfully');
 
-    // Set headers and send the .pkpass file
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', 'attachment; filename=businessCard.pkpass');
-
-    // Send .pkpass file
     return res.status(200).send(pkpassBuffer);
   } catch (error: unknown) {
     const err = error as Error;
-    console.error('Error generating business card pass:', err);
+    console.error('Error generating pass:', err);
     res.status(500).json({ error: 'Failed to generate pass', details: err.message });
   }
 }
